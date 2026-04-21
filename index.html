@@ -1,0 +1,1985 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a0f">
+<title>XRPL POS v6.0</title>
+<link rel="manifest" href="#" id="manifest-link">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--border:#2a2a3a;
+  --accent:#00d4ff;--accent2:#7b61ff;--accent3:#00ff9d;
+  --danger:#ff4466;--warn:#ffaa00;--gold:#f0b429;
+  --text:#e8e8f0;--text2:#8888aa;
+  --glow:0 0 20px rgba(0,212,255,0.3);
+  --app-width:480px;--font-scale:1.12;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:#050508;min-height:100vh;min-height:100dvh;font-family:'Syne',sans-serif;color:var(--text);overflow-x:hidden}
+#app{width:100%;max-width:var(--app-width);margin:0 auto;min-height:100vh;min-height:100dvh;background:var(--bg);display:flex;flex-direction:column;position:relative;overflow:hidden}
+#app::before{content:'';position:fixed;inset:0;max-width:var(--app-width);margin:0 auto;background-image:linear-gradient(rgba(0,212,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.03) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);background:rgba(10,10,15,.97);backdrop-filter:blur(20px);flex-shrink:0;gap:6px}
+.logo{display:flex;align-items:center;gap:7px;font-size:calc(15px * var(--font-scale));font-weight:800;flex-shrink:0}
+.logo-icon{width:28px;height:28px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.logo span{color:var(--accent)}
+.net-badge{padding:3px 8px;border-radius:20px;font-size:calc(9px * var(--font-scale));font-weight:700;font-family:'Space Mono',monospace;cursor:pointer;border:1px solid;flex-shrink:0}
+.net-badge.mainnet{background:rgba(0,255,157,.1);border-color:var(--accent3);color:var(--accent3)}
+.net-badge.testnet{background:rgba(255,170,0,.1);border-color:var(--warn);color:var(--warn)}
+.ws-indicator{display:flex;align-items:center;gap:4px;font-size:calc(9px * var(--font-scale));color:var(--text2);flex-shrink:0}
+.ws-dot{width:6px;height:6px;border-radius:50%;background:var(--border);flex-shrink:0;transition:background .3s}
+.ws-dot.connecting{background:var(--warn);animation:pulse 1s infinite}
+.ws-dot.connected{background:var(--accent3)}
+.ws-dot.error{background:var(--danger)}
+.wallet-badge{display:flex;align-items:center;gap:4px;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-family:'Space Mono',monospace;font-size:calc(9px * var(--font-scale));color:var(--text2);cursor:pointer;max-width:110px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex-shrink:1}
+.wallet-dot{width:5px;height:5px;background:var(--accent3);border-radius:50%;flex-shrink:0;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+/* ── PRICE TICKER BAR ── */
+.price-bar{display:flex;align-items:center;gap:0;padding:0;border-bottom:1px solid var(--border);background:rgba(18,18,26,.9);flex-shrink:0;overflow-x:auto;scrollbar-width:none;position:relative;z-index:10}
+.price-bar::-webkit-scrollbar{display:none}
+.price-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-right:1px solid var(--border);white-space:nowrap;flex-shrink:0}
+.price-item:last-child{border-right:none}
+.price-symbol{font-size:calc(10px * var(--font-scale));font-weight:700;color:var(--text2);font-family:'Space Mono',monospace}
+.price-val{font-size:calc(12px * var(--font-scale));font-weight:700;font-family:'Space Mono',monospace;color:var(--accent)}
+.price-change{font-size:calc(10px * var(--font-scale));font-family:'Space Mono',monospace}
+.price-change.up{color:var(--accent3)}
+.price-change.down{color:var(--danger)}
+.price-source{font-size:calc(9px * var(--font-scale));color:var(--text2);opacity:.7}
+.price-spinner{width:10px;height:10px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* BOTTOM NAV */
+.bottom-nav{position:sticky;bottom:0;z-index:50;display:flex;background:rgba(10,10,15,.97);border-top:1px solid var(--border);backdrop-filter:blur(20px);flex-shrink:0}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px;cursor:pointer;border:none;background:transparent;color:var(--text2);font-family:'Syne',sans-serif;font-size:calc(10px * var(--font-scale));font-weight:600;transition:color .2s}
+.nav-btn .nav-icon{font-size:18px}
+.nav-btn.active{color:var(--accent)}
+
+/* SCROLL */
+.scroll-content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--border) transparent;position:relative;z-index:1}
+.scroll-content::-webkit-scrollbar{width:4px}
+.scroll-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.view{display:none;padding:12px}
+.view.active{display:block}
+.section-title{font-size:calc(10px * var(--font-scale));font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── INPUT MODE SWITCHER ── */
+.mode-switcher{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:3px;margin-bottom:12px;gap:3px}
+.mode-btn{flex:1;padding:8px 4px;border-radius:7px;border:none;background:transparent;color:var(--text2);font-family:'Syne',sans-serif;font-size:calc(11px * var(--font-scale));font-weight:700;cursor:pointer;transition:all .2s;text-align:center}
+.mode-btn.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;box-shadow:var(--glow)}
+
+/* ── AMOUNT CARD ── */
+.amount-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
+.amount-label{font-size:calc(10px * var(--font-scale));color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+.amount-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.amount-value{font-family:'Space Mono',monospace;font-size:calc(40px * var(--font-scale));font-weight:700;color:var(--text);line-height:1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.amount-currency-badge{font-family:'Space Mono',monospace;font-size:calc(14px * var(--font-scale));font-weight:700;color:var(--accent2);flex-shrink:0}
+
+/* fiat currency selector */
+.fiat-selector{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.fiat-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:calc(11px * var(--font-scale));font-weight:700;font-family:'Space Mono',monospace;cursor:pointer;transition:all .2s}
+.fiat-btn.active{background:var(--gold);border-color:var(--gold);color:#000}
+
+/* ── CONVERSION DISPLAY ── */
+.conversion-card{background:linear-gradient(135deg,rgba(0,212,255,.05),rgba(123,97,255,.05));border:1px solid rgba(0,212,255,.2);border-radius:12px;padding:12px 14px;margin-bottom:10px;display:none}
+.conversion-card.show{display:block}
+.conv-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.conv-row:last-child{margin-bottom:0}
+.conv-label{font-size:calc(11px * var(--font-scale));color:var(--text2)}
+.conv-value{font-family:'Space Mono',monospace;font-size:calc(13px * var(--font-scale));font-weight:700;color:var(--accent)}
+.conv-value.fiat{color:var(--gold)}
+.conv-value.token{color:var(--accent2)}
+.conv-divider{height:1px;background:var(--border);margin:8px 0}
+.conv-rate-row{display:flex;align-items:center;gap:6px;font-size:calc(10px * var(--font-scale));color:var(--text2)}
+.conv-source-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.conv-source-dot.dex{background:var(--accent3)}
+.conv-source-dot.cg{background:var(--warn)}
+.conv-source-dot.err{background:var(--danger)}
+
+/* TOKEN TABS */
+.currency-toggle{display:flex;gap:5px;flex-shrink:0}
+.currency-btn{padding:5px 9px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:calc(11px * var(--font-scale));font-weight:700;font-family:'Space Mono',monospace;cursor:pointer;transition:all .2s;max-width:75px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.currency-btn.active{background:var(--accent);border-color:var(--accent);color:#000;box-shadow:var(--glow)}
+
+/* NUMPAD */
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.numpad-btn{padding:0;height:calc(60px * var(--font-scale));background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:calc(26px * var(--font-scale));font-weight:700;font-family:'Space Mono',monospace;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;transition:all .1s}
+.numpad-btn:active{background:var(--surface2);border-color:var(--accent);color:var(--accent);transform:scale(.95)}
+.numpad-btn.clear{color:var(--danger)}
+
+/* QUICK */
+.quick-row{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none}
+.quick-row::-webkit-scrollbar{display:none}
+.quick-btn{padding:5px 10px;background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text2);font-size:calc(11px * var(--font-scale));font-family:'Space Mono',monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s}
+.quick-btn:active{border-color:var(--accent2);color:var(--accent2);transform:scale(.95)}
+
+/* INPUTS */
+.field-input,.desc-input{width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Syne',sans-serif;font-size:calc(14px * var(--font-scale));outline:none;transition:border-color .2s;-webkit-appearance:none}
+.field-input:focus,.desc-input:focus{border-color:var(--accent)}
+.field-input::placeholder,.desc-input::placeholder{color:var(--text2)}
+.desc-input{margin-bottom:10px}
+
+.charge-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;color:#fff;font-size:calc(14px * var(--font-scale));font-weight:800;font-family:'Syne',sans-serif;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 20px rgba(0,212,255,.3);transition:all .2s;margin-bottom:14px}
+.charge-btn:active{transform:scale(.98)}
+.charge-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* QR */
+.qr-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:12px}
+.qr-placeholder{display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px;color:var(--text2);font-size:calc(12px * var(--font-scale));text-align:center;opacity:.6}
+.qr-placeholder-icon{font-size:40px}
+#qr-container{display:none;flex-direction:column;align-items:center;gap:10px;width:100%}
+#qr-container.visible{display:flex}
+#qrcode{padding:12px;background:white;border-radius:12px;box-shadow:0 0 30px rgba(0,212,255,.15)}
+.qr-amount-val{font-family:'Space Mono',monospace;font-size:calc(22px * var(--font-scale));font-weight:700;color:var(--accent);text-align:center}
+.qr-amount-fiat{font-family:'Space Mono',monospace;font-size:calc(16px * var(--font-scale));font-weight:700;color:var(--gold);text-align:center}
+.qr-amount-desc{font-size:calc(12px * var(--font-scale));color:var(--text2);text-align:center}
+.payment-status{display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:20px;font-size:calc(11px * var(--font-scale));font-weight:600}
+.status-waiting{background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.3);color:var(--warn)}
+.status-confirmed{background:rgba(0,255,157,.1);border:1px solid rgba(0,255,157,.3);color:var(--accent3)}
+.status-error{background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.3);color:var(--danger)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 1s infinite;flex-shrink:0}
+.addr-verify-card{width:100%;padding:10px;background:var(--bg);border:2px solid var(--accent3);border-radius:10px;display:flex;flex-direction:column;gap:5px}
+.addr-verify-label{font-size:calc(9px * var(--font-scale));font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent3)}
+.addr-verify-full{font-family:'Space Mono',monospace;font-size:calc(9px * var(--font-scale));color:var(--text);word-break:break-all;line-height:1.5}
+.addr-checksum{font-family:'Space Mono',monospace;font-size:calc(10px * var(--font-scale));font-weight:700;color:var(--accent3);letter-spacing:2px}
+
+/* TX ITEMS */
+.tx-item{display:flex;align-items:center;gap:8px;padding:9px;border-radius:10px;margin-bottom:5px;border:1px solid transparent;cursor:pointer;transition:all .15s}
+.tx-item:active{background:var(--surface2);border-color:var(--border)}
+.tx-icon{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.tx-icon.xrp{background:rgba(0,212,255,.1)}
+.tx-icon.token{background:rgba(123,97,255,.1)}
+.tx-info{flex:1;min-width:0}
+.tx-desc{font-size:calc(12px * var(--font-scale));font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-time{font-size:calc(10px * var(--font-scale));color:var(--text2);font-family:'Space Mono',monospace}
+.tx-right{text-align:right;flex-shrink:0}
+.tx-amount{font-family:'Space Mono',monospace;font-size:calc(12px * var(--font-scale));font-weight:700;color:var(--accent3)}
+.tx-fiat{font-family:'Space Mono',monospace;font-size:calc(10px * var(--font-scale));color:var(--gold)}
+.tx-currency{font-size:calc(9px * var(--font-scale));color:var(--text2)}
+.empty-history{text-align:center;color:var(--text2);font-size:calc(12px * var(--font-scale));padding:20px;opacity:.6}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px}
+.stat-label{font-size:calc(9px * var(--font-scale));color:var(--text2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.stat-value{font-family:'Space Mono',monospace;font-size:calc(18px * var(--font-scale));font-weight:700;color:var(--accent);overflow:hidden;text-overflow:ellipsis}
+.stat-fiat{font-family:'Space Mono',monospace;font-size:calc(11px * var(--font-scale));color:var(--gold);margin-top:2px}
+.stat-sub{font-size:calc(10px * var(--font-scale));color:var(--text2);margin-top:2px}
+
+/* PRICE DETAIL CARD */
+.price-detail-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+.price-detail-card h3{font-size:calc(12px * var(--font-scale));font-weight:700;color:var(--accent);margin-bottom:12px}
+.price-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.price-row:last-child{border-bottom:none}
+.price-row-label{font-size:calc(11px * var(--font-scale));color:var(--text2)}
+.price-row-val{font-family:'Space Mono',monospace;font-size:calc(12px * var(--font-scale));font-weight:700;color:var(--text)}
+
+/* SETTINGS */
+.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:10px}
+.settings-card h3{font-size:calc(12px * var(--font-scale));font-weight:700;margin-bottom:10px;color:var(--accent)}
+.field-group{display:flex;flex-direction:column;gap:10px}
+.field-label{font-size:calc(10px * var(--font-scale));color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.net-switch{display:flex;gap:7px}
+.net-opt{flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:'Syne',sans-serif;font-size:calc(11px * var(--font-scale));font-weight:700;cursor:pointer;text-align:center;transition:all .2s}
+.net-opt.active-main{background:rgba(0,255,157,.1);border-color:var(--accent3);color:var(--accent3)}
+.net-opt.active-test{background:rgba(255,170,0,.1);border-color:var(--warn);color:var(--warn)}
+.sec-status-row{display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:8px;font-size:calc(11px * var(--font-scale));margin-bottom:8px;border:1px solid}
+.sec-status-row.ok{background:rgba(0,255,157,.07);border-color:rgba(0,255,157,.3);color:var(--accent3)}
+.sec-status-row.bad{background:rgba(255,68,102,.07);border-color:rgba(255,68,102,.3);color:var(--danger)}
+.slider-row{display:flex;align-items:center;gap:8px}
+.slider-row input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:var(--border);border-radius:2px;outline:none}
+.slider-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:var(--glow)}
+.slider-val{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);min-width:44px;text-align:right}
+.save-btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;color:#fff;font-size:calc(13px * var(--font-scale));font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;transition:all .2s;margin-top:4px}
+.save-btn:active{transform:scale(.98)}
+.btn-danger{width:100%;padding:10px;background:transparent;border:1px solid var(--danger);border-radius:9px;color:var(--danger);font-size:calc(12px * var(--font-scale));font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;margin-top:7px}
+.sec-alert{display:none;margin:0 0 10px;padding:10px 12px;border-radius:10px;align-items:flex-start;gap:8px;border:1px solid}
+.sec-alert.show{display:flex}
+.sec-alert.danger{background:rgba(255,68,102,.08);border-color:var(--danger);color:var(--danger)}
+.sec-alert-icon{font-size:18px;flex-shrink:0}
+.sec-alert-body strong{display:block;font-size:calc(12px * var(--font-scale));margin-bottom:2px}
+.sec-alert-body span{font-size:calc(10px * var(--font-scale));opacity:.8;line-height:1.4}
+.sec-dismiss{margin-left:auto;background:transparent;border:none;color:inherit;font-size:16px;cursor:pointer;padding:0 0 0 6px;flex-shrink:0}
+.install-banner{display:none;margin:0 0 10px;padding:10px;background:linear-gradient(135deg,rgba(0,212,255,.1),rgba(123,97,255,.1));border:1px solid var(--accent);border-radius:10px;align-items:center;gap:8px}
+.install-banner.show{display:flex}
+.install-text{flex:1}
+.install-text strong{display:block;font-size:12px;margin-bottom:2px}
+.install-text span{font-size:10px;color:var(--text2)}
+.install-btn{padding:6px 12px;background:var(--accent);border:none;border-radius:7px;color:#000;font-weight:800;font-size:11px;font-family:'Syne',sans-serif;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.ws-log{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;max-height:100px;overflow-y:auto;font-family:'Space Mono',monospace;font-size:9px;color:var(--text2);scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.ws-log::-webkit-scrollbar{width:3px}
+.ws-log::-webkit-scrollbar-thumb{background:var(--border)}
+.log-line{padding:1px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.log-line.ok{color:var(--accent3)}.log-line.err{color:var(--danger)}.log-line.info{color:var(--accent)}.log-line.sec{color:#f90}.log-line.price{color:var(--gold)}
+
+/* PIN */
+.pin-screen{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:16px}
+.pin-screen.show{display:flex}
+.pin-logo{font-size:44px}
+.pin-title{font-size:calc(18px * var(--font-scale));font-weight:800}
+.pin-subtitle{font-size:calc(12px * var(--font-scale));color:var(--text2);text-align:center}
+.pin-dots{display:flex;gap:12px;margin:6px 0}
+.pin-dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--border);transition:all .15s}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent);box-shadow:var(--glow)}
+.pin-dot.error{background:var(--danger);border-color:var(--danger)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:260px}
+.pin-btn{height:66px;background:var(--surface);border:1px solid var(--border);border-radius:11px;color:var(--text);font-size:26px;font-weight:700;font-family:'Space Mono',monospace;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;transition:all .1s}
+.pin-btn:active{background:var(--surface2);border-color:var(--accent);transform:scale(.95)}
+.pin-btn.clear{color:var(--danger);font-size:16px}
+.pin-error{color:var(--danger);font-size:calc(11px * var(--font-scale));min-height:16px;text-align:center}
+.pin-forgot{color:var(--text2);font-size:calc(10px * var(--font-scale));cursor:pointer;text-decoration:underline}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(8px);z-index:100;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:22px 22px 0 0;padding:24px 20px 36px;width:100%;max-width:var(--app-width);animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:3px;background:var(--border);border-radius:2px;margin:0 auto 16px}
+.success-icon{font-size:50px;text-align:center;margin-bottom:8px}
+.modal h2{font-size:20px;font-weight:800;text-align:center;color:var(--accent3);margin-bottom:5px}
+.modal p{color:var(--text2);font-size:13px;text-align:center;margin-bottom:6px;line-height:1.5}
+.modal .fiat-confirm{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--gold);text-align:center;margin-bottom:14px}
+.tx-hash-link{display:block;font-family:'Space Mono',monospace;font-size:9px;color:var(--accent);text-align:center;word-break:break-all;padding:7px;background:var(--bg);border-radius:7px;border:1px solid var(--border);margin-bottom:14px;text-decoration:none}
+</style>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div class="pin-screen" id="pin-screen">
+  <div class="pin-logo">🔐</div>
+  <div class="pin-title">XRPL POS</div>
+  <div class="pin-subtitle" id="pin-subtitle">Zadej PIN pro odemčení</div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+  <div class="pin-pad">
+    <button class="pin-btn" onclick="pinKey('1')">1</button>
+    <button class="pin-btn" onclick="pinKey('2')">2</button>
+    <button class="pin-btn" onclick="pinKey('3')">3</button>
+    <button class="pin-btn" onclick="pinKey('4')">4</button>
+    <button class="pin-btn" onclick="pinKey('5')">5</button>
+    <button class="pin-btn" onclick="pinKey('6')">6</button>
+    <button class="pin-btn" onclick="pinKey('7')">7</button>
+    <button class="pin-btn" onclick="pinKey('8')">8</button>
+    <button class="pin-btn" onclick="pinKey('9')">9</button>
+    <button class="pin-btn" style="visibility:hidden"></button>
+    <button class="pin-btn" onclick="pinKey('0')">0</button>
+    <button class="pin-btn clear" onclick="pinKey('del')">⌫</button>
+  </div>
+  <div class="pin-forgot" onclick="pinForgot()">Zapomněl jsem PIN</div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="logo"><div class="logo-icon">⚡</div>XRPL <span>POS</span></div>
+    <div class="net-badge mainnet" id="net-badge" onclick="toggleNetInfo()">MAINNET</div>
+    <div class="ws-indicator"><div class="ws-dot" id="ws-dot"></div><span id="ws-label">—</span></div>
+    <div class="wallet-badge" onclick="copyAddress()">
+      <div class="wallet-dot"></div><span id="wallet-display">Nastav adresu</span>
+    </div>
+  </header>
+
+  <!-- PRICE TICKER -->
+  <div class="price-bar" id="price-bar">
+    <div class="price-item">
+      <div class="price-spinner" id="xrp-spinner"></div>
+      <span class="price-symbol">XRP</span>
+      <span class="price-val" id="xrp-price-val">—</span>
+      <span class="price-change" id="xrp-price-chg"></span>
+      <span class="price-source" id="xrp-price-src"></span>
+    </div>
+    <div class="price-item" id="token-price-item" style="display:none">
+      <div class="price-spinner" id="tok-spinner"></div>
+      <span class="price-symbol" id="tok-price-sym">TOKEN</span>
+      <span class="price-val" id="tok-price-val">—</span>
+      <span class="price-change" id="tok-price-chg"></span>
+      <span class="price-source" id="tok-price-src"></span>
+    </div>
+    <div class="price-item">
+      <span class="price-symbol" id="fiat-label">CZK</span>
+      <span class="price-val" id="fiat-xrp-val">—</span>
+      <span class="price-source">1 XRP</span>
+    </div>
+  </div>
+
+  <div class="scroll-content">
+
+    <!-- ══ POS VIEW ══ -->
+    <div class="view active" id="view-pos">
+
+      <div class="sec-alert danger" id="tamper-alert">
+        <div class="sec-alert-icon">🚨</div>
+        <div class="sec-alert-body">
+          <strong>Adresa peněženky byla změněna!</strong>
+          <span>Kontrolní součet nesouhlasí. Zkontroluj nastavení.</span>
+        </div>
+        <button class="sec-dismiss" onclick="dismissAlert('tamper-alert')">✕</button>
+      </div>
+
+      <div class="install-banner" id="install-banner">
+        <div>📲</div>
+        <div class="install-text"><strong>Instalovat jako app</strong><span>Android 12+</span></div>
+        <button class="install-btn" onclick="installApp()">Instalovat</button>
+      </div>
+
+      <!-- INPUT MODE: TOKEN / FIAT -->
+      <div class="section-title">Režim zadávání</div>
+      <div class="mode-switcher">
+        <button class="mode-btn active" id="mode-token" onclick="setInputMode('token')">🪙 Tokeny</button>
+        <button class="mode-btn" id="mode-fiat" onclick="setInputMode('fiat')">💶 Fiat → Token</button>
+      </div>
+
+      <div class="section-title">Částka</div>
+      <div class="amount-card">
+        <div class="amount-label">
+          <span id="amount-label-text">Zadej částku v tokenech</span>
+          <span class="amount-currency-badge" id="amount-currency-badge">XRP</span>
+        </div>
+        <div class="amount-row">
+          <div class="amount-value" id="amount-display">0</div>
+          <div class="currency-toggle" id="currency-toggle-xrp-tok">
+            <button class="currency-btn active" onclick="setCurrency('XRP')" id="btn-xrp">XRP</button>
+            <button class="currency-btn" onclick="setCurrency('TOKEN')" id="btn-token">TOKEN</button>
+          </div>
+          <div class="fiat-selector" id="fiat-selector" style="display:none;width:100%">
+            <button class="fiat-btn" onclick="setFiat('CZK')" id="fiat-czk">CZK</button>
+            <button class="fiat-btn active" onclick="setFiat('USD')" id="fiat-usd">USD</button>
+            <button class="fiat-btn" onclick="setFiat('EUR')" id="fiat-eur">EUR</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONVERSION BOX -->
+      <div class="conversion-card" id="conversion-card">
+        <div class="conv-row">
+          <span class="conv-label" id="conv-label-a">Platíš</span>
+          <span class="conv-value fiat" id="conv-fiat-val">—</span>
+        </div>
+        <div class="conv-row">
+          <span class="conv-label" id="conv-label-b">= v tokenech</span>
+          <span class="conv-value token" id="conv-token-val">—</span>
+        </div>
+        <div class="conv-divider"></div>
+        <div class="conv-row">
+          <span class="conv-label">Kurz</span>
+          <span class="conv-value" id="conv-rate-val" style="color:var(--text2)">—</span>
+        </div>
+        <div class="conv-rate-row">
+          <div class="conv-source-dot" id="conv-src-dot"></div>
+          <span id="conv-src-text">—</span>
+          <span style="margin-left:auto;opacity:.6" id="conv-updated">—</span>
+        </div>
+      </div>
+
+      <div class="numpad">
+        <button class="numpad-btn" onclick="numpad('1')">1</button>
+        <button class="numpad-btn" onclick="numpad('2')">2</button>
+        <button class="numpad-btn" onclick="numpad('3')">3</button>
+        <button class="numpad-btn" onclick="numpad('4')">4</button>
+        <button class="numpad-btn" onclick="numpad('5')">5</button>
+        <button class="numpad-btn" onclick="numpad('6')">6</button>
+        <button class="numpad-btn" onclick="numpad('7')">7</button>
+        <button class="numpad-btn" onclick="numpad('8')">8</button>
+        <button class="numpad-btn" onclick="numpad('9')">9</button>
+        <button class="numpad-btn" onclick="numpad('.')">.</button>
+        <button class="numpad-btn" onclick="numpad('0')">0</button>
+        <button class="numpad-btn clear" onclick="numpad('del')">⌫</button>
+      </div>
+
+      <div class="section-title">Rychlé částky</div>
+      <div class="quick-row" id="quick-row">
+        <button class="quick-btn" onclick="setAmount('10')">10</button>
+        <button class="quick-btn" onclick="setAmount('25')">25</button>
+        <button class="quick-btn" onclick="setAmount('50')">50</button>
+        <button class="quick-btn" onclick="setAmount('100')">100</button>
+        <button class="quick-btn" onclick="setAmount('200')">200</button>
+        <button class="quick-btn" onclick="setAmount('500')">500</button>
+        <button class="quick-btn" onclick="setAmount('1000')">1 000</button>
+      </div>
+
+      <div class="section-title">Popis</div>
+      <input type="text" class="desc-input" id="desc-input" placeholder="Káva, Zboží #42..." maxlength="60">
+      <button class="charge-btn" id="charge-btn" onclick="generatePayment()">⚡ GENEROVAT PLATBU</button>
+
+      <!-- QR -->
+      <div class="section-title">QR Platba</div>
+      <div class="qr-card">
+        <div class="qr-placeholder" id="qr-placeholder">
+          <div class="qr-placeholder-icon">⬛</div>
+          <div>Zadej částku a klikni<br><strong>GENEROVAT PLATBU</strong></div>
+        </div>
+        <div id="qr-container">
+          <div id="qrcode"></div>
+          <div class="qr-amount-val" id="qr-amount-val">—</div>
+          <div class="qr-amount-fiat" id="qr-amount-fiat"></div>
+          <div class="qr-amount-desc" id="qr-amount-desc">—</div>
+          <div class="payment-status status-waiting" id="payment-status">
+            <div class="status-dot"></div><span id="status-text">Čekám na platbu...</span>
+          </div>
+          <div class="addr-verify-card">
+            <div class="addr-verify-label">✅ Ověř adresu příjemce</div>
+            <div class="addr-verify-full" id="addr-verify-full">—</div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:9px;color:var(--text2)">Checksum:</span>
+              <span class="addr-checksum" id="addr-checksum">——</span>
+            </div>
+          </div>
+          <button class="quick-btn" style="width:100%;text-align:center;border-radius:8px;margin-top:2px" onclick="cancelPayment()">✕ Zrušit</button>
+        </div>
+      </div>
+
+      <div class="section-title">Poslední platby</div>
+      <div id="tx-history-short"><div class="empty-history">Zatím žádné transakce</div></div>
+    </div>
+
+    <!-- ══ STATS VIEW ══ -->
+    <div class="view" id="view-stats">
+      <div class="section-title">Přehled</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">XRP celkem</div><div class="stat-value" id="stat-xrp">0</div><div class="stat-fiat" id="stat-xrp-fiat"></div></div>
+        <div class="stat-card"><div class="stat-label">Token celkem</div><div class="stat-value" id="stat-token">0</div><div class="stat-fiat" id="stat-tok-fiat"></div><div class="stat-sub" id="stat-token-lbl">TOKEN</div></div>
+        <div class="stat-card"><div class="stat-label">Transakce</div><div class="stat-value" id="stat-count">0</div></div>
+        <div class="stat-card"><div class="stat-label">Dnes</div><div class="stat-value" id="stat-today">0</div><div class="stat-sub">plateb dnes</div></div>
+      </div>
+
+      <div class="price-detail-card">
+        <h3>💹 Aktuální kurzy</h3>
+        <div class="price-row"><span class="price-row-label">XRP / USD</span><span class="price-row-val" id="pd-xrp-usd">—</span></div>
+        <div class="price-row"><span class="price-row-label">XRP / EUR</span><span class="price-row-val" id="pd-xrp-eur">—</span></div>
+        <div class="price-row"><span class="price-row-label">XRP / CZK</span><span class="price-row-val" id="pd-xrp-czk">—</span></div>
+        <div class="price-row" id="pd-tok-row" style="display:none"><span class="price-row-label" id="pd-tok-label">TOKEN / USD</span><span class="price-row-val" id="pd-tok-usd">—</span></div>
+        <div class="price-row" id="pd-tok-xrp-row" style="display:none"><span class="price-row-label" id="pd-tok-xrp-label">TOKEN / XRP</span><span class="price-row-val" id="pd-tok-xrp">—</span></div>
+        <div class="price-row" id="pd-tok-czk-row" style="display:none"><span class="price-row-label" id="pd-tok-czk-label">TOKEN / CZK</span><span class="price-row-val" id="pd-tok-czk">—</span></div>
+        <div class="price-row" id="pd-tok-offers-row" style="display:none"><span class="price-row-label">DEX likvidita</span><span class="price-row-val" id="pd-tok-offers" style="color:var(--accent3)">—</span></div>
+        <div class="price-row"><span class="price-row-label">Zdroj ceny</span><span class="price-row-val" id="pd-source">—</span></div>
+        <div class="price-row"><span class="price-row-label">Aktualizováno</span><span class="price-row-val" id="pd-updated">—</span></div>
+      </div>
+
+      <div class="section-title">Všechny transakce</div>
+      <div id="tx-history-full"><div class="empty-history">Zatím žádné transakce</div></div>
+    </div>
+
+    <!-- ══ SETTINGS VIEW ══ -->
+    <div class="view" id="view-settings">
+
+      <div class="settings-card">
+        <h3>💹 Kurzy & DEX</h3>
+        <div class="field-group">
+          <div>
+            <div class="field-label">Zobrazovat ceny v</div>
+            <div class="fiat-selector" style="display:flex">
+              <button class="fiat-btn active" onclick="setDisplayFiat('CZK',this)" id="df-czk">CZK</button>
+              <button class="fiat-btn" onclick="setDisplayFiat('USD',this)" id="df-usd">USD</button>
+              <button class="fiat-btn" onclick="setDisplayFiat('EUR',this)" id="df-eur">EUR</button>
+            </div>
+          </div>
+          <div>
+            <div class="field-label">CoinGecko Token ID (pro fallback)</div>
+            <input class="field-input" id="set-cg-id" placeholder="např. ripple, bitcoin...">
+          </div>
+          <div>
+            <div class="field-label" style="color:#00d4ff;">🔐 XUMM / Xaman API Key</div>
+            <input class="field-input" id="set-xumm-key" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" type="password" autocomplete="off">
+          </div>
+          <div>
+            <div class="field-label" style="color:#00d4ff;">🔐 XUMM / Xaman API Secret</div>
+            <input class="field-input" id="set-xumm-secret" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" type="password" autocomplete="off">
+            <div style="font-size:11px;color:#8888aa;margin-top:4px;">Klíče uloženy pouze v tomto prohlížeči. Nikdy nesdílej tento soubor s klíči.</div>
+          </div>
+          <div>
+            <div class="field-label">XRPL DEX — issuer ceny (volitelné)</div>
+            <input class="field-input" id="set-dex-issuer" placeholder="rIssuerXXXXXXX (pro DEX cenu tokenu)">
+          </div>
+        </div>
+        <button class="save-btn" style="margin-top:10px" onclick="fetchAllPrices()">🔄 Obnovit kurzy</button>
+      </div>
+
+      <div class="settings-card">
+        <h3>🛡️ Bezpečnost</h3>
+        <div class="sec-status-row" id="sec-pin-status"><span>🔐</span><span id="sec-pin-label">PIN: není nastaven</span></div>
+        <div class="sec-status-row" id="sec-checksum-status"><span>🔏</span><span id="sec-checksum-label">Checksum: —</span></div>
+        <div class="sec-status-row" id="sec-https-status"><span>🔒</span><span id="sec-https-label">HTTPS: —</span></div>
+        <div style="margin-top:10px">
+          <div class="field-label">Nový PIN (4 číslice)</div>
+          <input class="field-input" id="set-pin" type="password" inputmode="numeric" maxlength="4" placeholder="Nový PIN" style="margin-bottom:7px">
+          <input class="field-input" id="set-pin2" type="password" inputmode="numeric" maxlength="4" placeholder="Potvrď PIN">
+        </div>
+        <button class="save-btn" style="margin-top:8px" onclick="savePin()">🔐 Nastavit PIN</button>
+        <button class="btn-danger" onclick="clearPin()">Odebrat PIN</button>
+      </div>
+
+      <div class="settings-card">
+        <h3>⚙️ Pokročilé</h3>
+        <div class="field-group">
+          <div><div class="field-label">Tolerance platby (%)</div><input class="field-input" id="set-tolerance" type="number" min="0.5" max="10" step="0.5" placeholder="1" value="1"></div>
+          <div><div class="field-label">Název prodejny</div><input class="field-input" id="set-shop-name" placeholder="Moje prodejna"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="save-btn" style="flex:1" onclick="exportCSV()">📊 Export CSV</button>
+          <button class="btn-danger" style="flex:1;margin-top:0" onclick="clearHistory()">🗑️ Smazat hist.</button>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>🌐 Síť XRPL</h3>
+        <div class="net-switch">
+          <button class="net-opt active-main" id="net-main" onclick="setNetwork('mainnet')">🟢 Mainnet</button>
+          <button class="net-opt" id="net-test" onclick="setNetwork('testnet')">🟡 Testnet</button>
+        </div>
+        <div style="margin-top:8px"><div class="field-label">WebSocket log</div>
+          <div class="ws-log" id="ws-log"><div class="log-line">— nepřipojeno —</div></div>
+        </div>
+        <button class="save-btn" style="margin-top:8px" onclick="reconnectWS()">🔄 Připojit</button>
+      </div>
+
+      <div class="settings-card">
+        <h3>🔑 Peněženka</h3>
+        <div class="field-group">
+          <div><div class="field-label">XRPL adresa příjemce</div><input class="field-input" id="set-address" placeholder="rXXXXXXXXXXXXXXXXXXXX"></div>
+          <div><div class="field-label">Destination Tag</div><input class="field-input" id="set-dest-tag" placeholder="12345" type="number"></div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>🪙 Token (IOU)</h3>
+        <div class="field-group">
+          <div><div class="field-label">Název tokenu</div><input class="field-input" id="set-token-name" placeholder="HUT, CZK, EUR, MYTOKEN..."></div>
+          <div><div class="field-label">Issuer adresa</div><input class="field-input" id="set-token-issuer" placeholder="rnRkfdsFStM3aP6VdcnJKYPjeM7WwYpfnU"></div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>📲 Zobrazení</h3>
+        <div class="field-group">
+          <div><div class="field-label">Šířka</div><div class="slider-row"><input type="range" id="width-slider" min="320" max="768" step="8" value="480" oninput="previewWidth(this.value)"><div class="slider-val" id="width-val">480px</div></div></div>
+          <div><div class="field-label">Písmo</div><div class="slider-row"><input type="range" id="font-slider" min="0.8" max="1.5" step="0.05" value="1.12" oninput="previewFont(this.value)"><div class="slider-val" id="font-val">112%</div></div></div>
+          <div><div class="field-label">Tlačítka</div><div class="slider-row"><input type="range" id="btn-slider" min="40" max="90" step="4" value="60" oninput="previewBtnHeight(this.value)"><div class="slider-val" id="btn-val">60px</div></div></div>
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveSettings()">💾 Uložit nastavení</button>
+      <div style="height:20px"></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="switchView('pos',this)"><span class="nav-icon">🏪</span>Pokladna</button>
+    <button class="nav-btn" onclick="switchView('stats',this)"><span class="nav-icon">📊</span>Statistiky</button>
+    <button class="nav-btn" onclick="switchView('settings',this)"><span class="nav-icon">⚙️</span>Nastavení</button>
+  </nav>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="modal-overlay" id="success-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="success-icon">✅</div>
+    <h2>Platba přijata!</h2>
+    <p id="modal-detail">—</p>
+    <div class="fiat-confirm" id="modal-fiat">—</div>
+    <a id="modal-explorer" class="tx-hash-link" href="#" target="_blank" rel="noopener">→ XRPL Explorer</a>
+    <button class="save-btn" onclick="closeModal()">Nová platba</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════
+//  XRPL POS — DEX Edition
+//  Ceny: XRPL DEX (AMM/order book) + CoinGecko fallback
+//  Fiat: USD / EUR / CZK — přepínač
+//  Režim: zadání v tokenech NEBO ve fiat → přepočet automaticky
+// ═══════════════════════════════════════════════════════════════
+
+const NETWORKS = {
+  mainnet:{ ws:'wss://xrplcluster.com', wsFallbacks:['wss://s1.ripple.com','wss://s2.ripple.com'], explorer:'https://livenet.xrpl.org/transactions/' },
+  testnet:{ ws:'wss://s.altnet.rippletest.net:51233', wsFallbacks:[], explorer:'https://testnet.xrpl.org/transactions/' },
+};
+// Xaman free API (no key needed for basic)
+// ── XUMM API konfigurace ──────────────────────
+// API klíče načti z localStorage — nikdy nezapisuj přímo do kódu!
+const XUMM_CONFIG = {
+  get apiKey()    { return localStorage.getItem('xumm_api_key')    || ''; },
+  get apiSecret() { return localStorage.getItem('xumm_api_secret') || ''; }
+};
+// CoinGecko free API (no key needed for basic)
+const CG_BASE = 'https://api.coingecko.com/api/v3';
+// Exchange rates fallback (open.er-api)
+const ER_BASE = 'https://open.er-api.com/v6/latest/USD';
+
+
+// ── v6.0: Unikátní device salt (bezpečnější než hardcoded) ──────
+function getOrCreateSalt() {
+  let s = localStorage.getItem('xrpl_pos_device_salt');
+  if (!s) {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    s = 'XRPL_' + Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('');
+    localStorage.setItem('xrpl_pos_device_salt', s);
+  }
+  return s;
+}
+const DEVICE_SALT = getOrCreateSalt();
+
+// ── v6.0: Zvukové + haptické potvrzení platby ───────────────────
+let _audioCtx = null;
+function playConfirmSound() {
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523, 659, 784, 1047];
+    notes.forEach((freq, i) => {
+      const osc = _audioCtx.createOscillator();
+      const gain = _audioCtx.createGain();
+      osc.connect(gain); gain.connect(_audioCtx.destination);
+      osc.frequency.value = freq;
+      const t = _audioCtx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0.25, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      osc.start(t); osc.stop(t + 0.18);
+    });
+  } catch(e) {}
+}
+function vibrateDevice(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e) {} }
+
+// ── v6.0: Offline cache kurzů ────────────────────────────────────
+function savePriceCache(prices) {
+  try {
+    localStorage.setItem('xrpl_pos_price_cache', JSON.stringify({
+      prices, ts: Date.now()
+    }));
+  } catch(e) {}
+}
+function loadPriceCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem('xrpl_pos_price_cache') || 'null');
+    if (!c) return null;
+    const age = Math.round((Date.now() - c.ts) / 60000);
+    return { ...c.prices, cacheAge: age };
+  } catch(e) { return null; }
+}
+
+// ── v6.0: Export CSV ─────────────────────────────────────────────
+function exportCSV() {
+  const txs = S.transactions;
+  if (!txs.length) { alert('Žádné transakce k exportu.'); return; }
+  const lines = ['Datum;Čas;Popis;Částka;Měna;Fiat hodnota;Fiat měna;Tag;TX Hash'];
+  txs.forEach(tx => {
+    const d = new Date(tx.time);
+    const datum = d.toLocaleDateString('cs-CZ');
+    const cas = d.toLocaleTimeString('cs-CZ', {hour:'2-digit',minute:'2-digit'});
+    const fiatVal = tx.fiatVal != null ? tx.fiatVal.toFixed(2) : '';
+    const fiatCur = tx.fiatCur || '';
+    lines.push([datum, cas, '"'+(tx.desc||'').replace(/"/g,'""')+'"', tx.amount, tx.currency, fiatVal, fiatCur, tx.tag||'', tx.hash||''].join(';'));
+  });
+  const blob = new Blob(['﻿'+lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'xrpl-pos-export-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+  wsLog('📊 CSV export: '+txs.length+' transakcí', 'ok');
+}
+
+// ── v6.0: Smazat historii ────────────────────────────────────────
+function clearHistory() {
+  if (!confirm('Smazat celou historii transakcí? Tato akce je nevratná.')) return;
+  S.transactions = [];
+  localStorage.removeItem('xrpl_pos_txs');
+  renderHistory(); updateStats();
+  alert('✅ Historie smazána.');
+}
+
+const S = {
+  amount:'', currency:'XRP', network:'mainnet',
+  inputMode:'token',   // 'token' | 'fiat'
+  fiatCurrency:'CZK',  // active fiat for input
+  displayFiat:'CZK',   // fiat shown in ticker & stats
+  transactions: JSON.parse(localStorage.getItem('xrpl_pos_txs')      || '[]'),
+  settings:     JSON.parse(localStorage.getItem('xrpl_pos_settings') || '{}'),
+  deferredPrompt:null, session:null,
+  ws:null, wsOk:false, wsRetry:0, wsRetryTimer:null,
+  pinBuffer:'', pinMode:'unlock', pinAttempts:0, pinLocked:false,
+  // price data
+  prices: {
+    xrpUsd: null, xrpEur: null, xrpCzk: null,
+    tokenUsd: null,
+    source: null,   // 'dex' | 'coingecko' | null
+    updatedAt: null,
+    fxRates: {},    // USD base rates
+  },
+  priceTimer: null,
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  PRICE ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+async function fetchAllPrices() {
+  wsLog('💹 Načítám kurzy...', 'price');
+  showPriceSpinner('xrp', true);
+  showPriceSpinner('tok', true);
+
+  // 1) Fetch FX rates (USD → EUR, CZK)
+  await fetchFxRates();
+
+  // 2) Try XRPL DEX first for XRP price
+  const dexOk = await fetchXrpPriceFromDEX();
+
+  // 3) Fallback to CoinGecko
+  if (!dexOk) await fetchXrpPriceFromCoinGecko();
+
+  // 4) Token price
+  await fetchTokenPrice();
+
+  updatePriceTicker();
+  updateConversionBox();
+  updateStatsWithFiat();
+  showPriceSpinner('xrp', false);
+  showPriceSpinner('tok', false);
+  // Ulož cache pro offline použití
+  savePriceCache(S.prices);
+}
+
+// ── SDÍLENÉ PERSISTENTNÍ WS SPOJENÍ PRO RPC DOTAZY ──────────────
+// Jedno WS spojení sdílené pro subscribe (platby) i price dotazy.
+// ID-based routing — každý dotaz dostane unikátní ID a čeká na
+// odpověď se stejným ID. Tohle zcela obchází CORS.
+
+const RPC = {
+  ws: null,
+  ready: false,
+  pending: new Map(),   // id → { resolve, reject, timer }
+  queue: [],            // příkazy čekající na připojení
+  reconnTimer: null,
+  url: null,
+};
+
+function rpcConnect(url) {
+  if (RPC.ws && (RPC.ws.readyState === WebSocket.OPEN || RPC.ws.readyState === WebSocket.CONNECTING)) return;
+  RPC.url  = url || wsURL();
+  RPC.ready = false;
+  const ws  = new WebSocket(RPC.url);
+  RPC.ws    = ws;
+
+  ws.onopen = () => {
+    RPC.ready = true;
+    wsLog('RPC WS připojeno ✓', 'price');
+    // Odešli všechny zprávy ve frontě
+    for (const msg of RPC.queue) ws.send(JSON.stringify(msg));
+    RPC.queue = [];
+    // Znovu se přihlas k odběru transakcí pokud máme adresu
+    if (S.settings.address && S.ws === ws) {
+      ws.send(JSON.stringify({ command:'subscribe', accounts:[S.settings.address] }));
+    }
+  };
+
+  ws.onmessage = (evt) => {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch(e) { return; }
+
+    // Routing podle ID pro RPC odpovědi
+    if (msg.id && RPC.pending.has(msg.id)) {
+      const { resolve, reject: rej, timer } = RPC.pending.get(msg.id);
+      RPC.pending.delete(msg.id);
+      clearTimeout(timer);
+      if (msg.status === 'error' || msg.error) {
+        rej(new Error(msg.error_message || msg.error || 'XRPL error'));
+      } else {
+        resolve(msg.result ?? msg);
+      }
+      return;
+    }
+
+    // Předej platební události hlavnímu WS handleru
+    if (msg.type === 'transaction') handleIncomingTx(msg);
+    if (msg.type === 'response' && msg.status === 'success' && !msg.id) wsLog('Subscribed ✓','ok');
+  };
+
+  ws.onerror = (e) => { wsLog('RPC WS chyba','err'); RPC.ready = false; };
+  ws.onclose = () => {
+    RPC.ready = false;
+    wsLog('RPC WS odpojeno — rekonekce za 3s','info');
+    // Odmítni čekající dotazy
+    for (const [id, { reject: rej, timer }] of RPC.pending) {
+      clearTimeout(timer);
+      rej(new Error('WS closed'));
+    }
+    RPC.pending.clear();
+    RPC.reconnTimer = setTimeout(() => rpcConnect(RPC.url), 3000);
+  };
+}
+
+// Odešli RPC příkaz přes sdílené spojení, vrať Promise s výsledkem
+function wsRpc(command, timeoutMs = 8000) {
+  return new Promise((resolve, reject) => {
+    const id = 'p' + (++wsRpc._seq);
+    const msg = { ...command, id };
+
+    const timer = setTimeout(() => {
+      RPC.pending.delete(id);
+      reject(new Error(`timeout: ${command.command}`));
+    }, timeoutMs);
+
+    RPC.pending.set(id, { resolve, reject, timer });
+
+    if (RPC.ready && RPC.ws?.readyState === WebSocket.OPEN) {
+      RPC.ws.send(JSON.stringify(msg));
+    } else {
+      RPC.queue.push(msg);
+      if (!RPC.ws || RPC.ws.readyState === WebSocket.CLOSED) rpcConnect();
+    }
+  });
+}
+wsRpc._seq = 0;
+
+// ── XRP/USD cena z XRPL DEX přes WebSocket ──────────────────────
+async function fetchXrpPriceFromDEX() {
+  try {
+    // USD/XRP order book — Bitstamp USD issuer: rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B
+    const result = await wsRpc({
+      command: 'book_offers',
+      taker_pays: { currency: 'USD', issuer: 'rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B' },
+      taker_gets: { currency: 'XRP' },
+      limit: 10,
+    });
+
+    const offers = result?.offers;
+    if (!offers || offers.length === 0) return false;
+
+    // Vypočítej medián z dostupných offers
+    const prices = [];
+    for (const o of offers) {
+      const xrpDrops = parseInt(o.TakerGets);
+      const usdVal   = parseFloat(o.TakerPays?.value || o.TakerPays);
+      if (xrpDrops > 0 && usdVal > 0) prices.push(usdVal / (xrpDrops / 1e6));
+    }
+    if (prices.length === 0) return false;
+
+    prices.sort((a,b) => a-b);
+    const mid = Math.floor(prices.length / 2);
+    const xrpUsd = prices.length % 2 ? prices[mid] : (prices[mid-1]+prices[mid])/2;
+
+    S.prices.xrpUsd    = xrpUsd;
+    S.prices.xrpEur    = xrpUsd * (S.prices.fxRates['EUR'] || 0.92);
+    S.prices.xrpCzk    = xrpUsd * (S.prices.fxRates['CZK'] || 23.5);
+    S.prices.source    = 'dex';
+    S.prices.updatedAt = new Date();
+    wsLog('✓ DEX XRP/USD: $' + xrpUsd.toFixed(4) + ' (' + prices.length + ' offers)', 'price');
+    return true;
+  } catch(e) {
+    wsLog('DEX XRP chyba: ' + e.message + ' → fallback CoinGecko', 'err');
+    return false;
+  }
+}
+
+async function fetchXrpPriceFromCoinGecko() {
+  try {
+    const url = `${CG_BASE}/simple/price?ids=ripple&vs_currencies=usd,eur,czk&include_24hr_change=true`;
+    const res  = await fetch(url, { signal: AbortSignal.timeout(7000) });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data.ripple) return false;
+    S.prices.xrpUsd  = data.ripple.usd;
+    S.prices.xrpEur  = data.ripple.eur;
+    S.prices.xrpCzk  = data.ripple.czk;
+    S.prices.xrpChg  = data.ripple.usd_24h_change;
+    S.prices.source  = 'coingecko';
+    S.prices.updatedAt = new Date();
+    wsLog('✓ CoinGecko XRP: $' + data.ripple.usd, 'price');
+    return true;
+  } catch(e) {
+    wsLog('CoinGecko chyba: ' + e.message, 'err');
+    return false;
+  }
+}
+
+async function fetchTokenPrice() {
+  const s   = S.settings;
+  const tok = s.tokenName;
+  if (!tok) return;
+
+  // 1) XRPL AMM pool — nejpřesnější cena pro tokeny s AMM (HUT/XRP)
+  if (s.tokenIssuer) {
+    const ammOk = await fetchTokenPriceFromAMM(tok, s.tokenIssuer);
+    if (ammOk) return;
+  }
+
+  // 2) XRPL DEX order book — obě strany, medián
+  if (s.tokenIssuer) {
+    const dexOk = await fetchTokenPriceFromDEX(tok, s.tokenIssuer);
+    if (dexOk) return;
+  }
+
+  // 3) xrplmeta.org — agregátor
+  const metaOk = await fetchTokenPriceFromXrplMeta(tok, s.tokenIssuer);
+  if (metaOk) return;
+
+  // 4) CoinGecko fallback
+  if (s.cgTokenId) {
+    try {
+      const url = `${CG_BASE}/simple/price?ids=${s.cgTokenId}&vs_currencies=usd,eur,czk&include_24hr_change=true`;
+      const res  = await fetch(url, { signal: AbortSignal.timeout(7000) });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data[s.cgTokenId]) return;
+      S.prices.tokenUsd = data[s.cgTokenId].usd;
+      S.prices.tokenEur = data[s.cgTokenId].eur;
+      S.prices.tokenCzk = data[s.cgTokenId].czk;
+      S.prices.tokenChg = data[s.cgTokenId].usd_24h_change;
+      S.prices.tokenSrc = 'coingecko';
+      wsLog('✓ CoinGecko token: $' + data[s.cgTokenId].usd, 'price');
+    } catch(e) {
+      wsLog('Token CG chyba: ' + e.message, 'err');
+    }
+  }
+
+  if (!S.prices.tokenUsd) wsLog(`⚠️ Kurz ${tok} nedostupný — žádné offers/AMM/metadata`, 'err');
+}
+
+// ── AMM POOL — nejpřesnější cena z liquidity poolu ───────────────
+async function fetchTokenPriceFromAMM(currency, issuer) {
+  try {
+    const result = await wsRpc({
+      command: 'amm_info',
+      asset:  { currency: 'XRP' },
+      asset2: { currency, issuer },
+    });
+
+    const amm = result?.amm;
+    if (!amm) return false;
+
+    // amount = XRP v dropech, amount2 = token hodnota
+    const xrpDrops = parseInt(amm.amount);
+    const tokVal   = parseFloat(amm.amount2?.value);
+    if (!xrpDrops || !tokVal || tokVal === 0) return false;
+
+    // AMM cena: kolik XRP za 1 token
+    const tokenXrp = (xrpDrops / 1e6) / tokVal;
+    const xrpUsd   = S.prices.xrpUsd || 0;
+
+    S.prices.tokenXrp        = tokenXrp;
+    S.prices.tokenUsd        = tokenXrp * xrpUsd;
+    S.prices.tokenEur        = S.prices.tokenUsd * (S.prices.fxRates['EUR'] || 0.92);
+    S.prices.tokenCzk        = S.prices.tokenUsd * (S.prices.fxRates['CZK'] || 23.5);
+    S.prices.tokenSrc        = 'amm';
+    S.prices.tokenPoolXrp    = xrpDrops / 1e6;
+    S.prices.tokenPoolAmount = tokVal;
+    S.prices.tokenFee        = (amm.trading_fee || 0) / 1000; // v %
+
+    wsLog(`✓ AMM ${currency}/XRP: ${tokenXrp.toFixed(8)} XRP | pool: ${(xrpDrops/1e6).toFixed(0)} XRP + ${tokVal.toFixed(0)} ${currency}`, 'price');
+    return true;
+  } catch(e) {
+    // actNotFound = AMM pool neexistuje pro tento pár
+    if (e.message?.includes('actNotFound') || e.message?.includes('timeout')) {
+      wsLog(`AMM ${currency}: pool nenalezen → zkouším order book`, 'info');
+    } else {
+      wsLog(`AMM ${currency} chyba: ${e.message}`, 'err');
+    }
+    return false;
+  }
+}
+
+// ── TOKEN/XRP cena z XRPL DEX přes WebSocket ────────────────────
+async function fetchTokenPriceFromDEX(currency, issuer) {
+  try {
+    // Dotaz obou stran order booku současně přes dočasné WS spojení
+    const [resultA, resultB] = await Promise.allSettled([
+      // Strana A: prodej tokenu za XRP
+      wsRpc({
+        command: 'book_offers',
+        taker_pays: { currency, issuer },
+        taker_gets: { currency: 'XRP' },
+        limit: 10,
+      }),
+      // Strana B: koupě tokenu za XRP
+      wsRpc({
+        command: 'book_offers',
+        taker_pays: { currency: 'XRP' },
+        taker_gets: { currency, issuer },
+        limit: 10,
+      }),
+    ]);
+
+    const prices = [];
+
+    // Parse strana A — TakerPays=TOKEN, TakerGets=XRP
+    if (resultA.status === 'fulfilled' && resultA.value?.offers?.length) {
+      for (const o of resultA.value.offers) {
+        const tokAmt = parseFloat(o.TakerPays?.value ?? o.TakerPays);
+        const xrpAmt = parseInt(o.TakerGets) / 1e6;
+        if (tokAmt > 0 && xrpAmt > 0) prices.push(xrpAmt / tokAmt);
+      }
+    }
+
+    // Parse strana B — TakerPays=XRP, TakerGets=TOKEN
+    if (resultB.status === 'fulfilled' && resultB.value?.offers?.length) {
+      for (const o of resultB.value.offers) {
+        const xrpAmt = parseInt(o.TakerPays) / 1e6;
+        const tokAmt = parseFloat(o.TakerGets?.value ?? o.TakerGets);
+        if (tokAmt > 0 && xrpAmt > 0) prices.push(xrpAmt / tokAmt);
+      }
+    }
+
+    if (prices.length === 0) {
+      wsLog(`DEX ${currency}: žádné offers nalezeny`, 'err');
+      return false;
+    }
+
+    // Medián — odolný vůči outlierům
+    prices.sort((a,b) => a-b);
+    const mid = Math.floor(prices.length / 2);
+    const tokenXrp = prices.length % 2 ? prices[mid] : (prices[mid-1]+prices[mid])/2;
+
+    const xrpUsd = S.prices.xrpUsd || 0;
+    S.prices.tokenXrp        = tokenXrp;
+    S.prices.tokenUsd        = tokenXrp * xrpUsd;
+    S.prices.tokenEur        = S.prices.tokenUsd * (S.prices.fxRates['EUR'] || 0.92);
+    S.prices.tokenCzk        = S.prices.tokenUsd * (S.prices.fxRates['CZK'] || 23.5);
+    S.prices.tokenSrc        = 'dex';
+    S.prices.tokenOfferCount = prices.length;
+
+    wsLog(`✓ DEX ${currency}: ${tokenXrp.toFixed(8)} XRP (${prices.length} offers, medián)`, 'price');
+    return true;
+  } catch(e) {
+    wsLog(`Token DEX ${currency} chyba: ${e.message}`, 'err');
+    return false;
+  }
+}
+
+// ── xrplmeta.org — agregátor XRPL token dat ──────────────────────
+async function fetchTokenPriceFromXrplMeta(currency, issuer) {
+  if (!issuer) return false;
+  try {
+    const url = `https://s1.xrplmeta.org/token/${currency}:${issuer}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) return false;
+    const data = await res.json();
+    // xrplmeta vrací metrics.price v XRP
+    const priceXrp = data?.metrics?.price;
+    if (!priceXrp || priceXrp <= 0) return false;
+    const xrpUsd = S.prices.xrpUsd || 0;
+    S.prices.tokenXrp = priceXrp;
+    S.prices.tokenUsd = priceXrp * xrpUsd;
+    S.prices.tokenEur = S.prices.tokenUsd * (S.prices.fxRates['EUR'] || 0.92);
+    S.prices.tokenCzk = S.prices.tokenUsd * (S.prices.fxRates['CZK'] || 23.5);
+    S.prices.tokenSrc = 'xrplmeta';
+    S.prices.tokenMcap = data?.metrics?.marketcap;
+    S.prices.tokenVol  = data?.metrics?.volume;
+    wsLog(`✓ xrplmeta ${currency}: ${priceXrp.toFixed(8)} XRP`, 'price');
+    return true;
+  } catch(e) {
+    wsLog('xrplmeta chyba: ' + e.message, 'err');
+    return false;
+  }
+}
+
+async function fetchFxRates() {
+  try {
+    const res = await fetch(ER_BASE, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return;
+    const data = await res.json();
+    S.prices.fxRates = data.rates || {};
+    wsLog('✓ FX kurzy: EUR=' + (data.rates?.EUR||'?') + ' CZK=' + (data.rates?.CZK||'?'), 'price');
+  } catch(e) {
+    // use hardcoded fallback
+    S.prices.fxRates = { EUR: 0.92, CZK: 23.5, USD: 1 };
+    wsLog('FX fallback hodnoty', 'info');
+  }
+}
+
+// ── HELPERS ─────────────────────────────────────────────────────
+
+function getXrpInFiat(fiat) {
+  const p = S.prices;
+  if (fiat==='USD') return p.xrpUsd;
+  if (fiat==='EUR') return p.xrpEur;
+  if (fiat==='CZK') return p.xrpCzk;
+  return null;
+}
+
+function getTokenInFiat(fiat) {
+  const p = S.prices;
+  if (fiat==='USD') return p.tokenUsd;
+  if (fiat==='EUR') return p.tokenEur;
+  if (fiat==='CZK') return p.tokenCzk;
+  return null;
+}
+
+function fiatSymbol(fiat) {
+  return {USD:'$', EUR:'€', CZK:'Kč'}[fiat] || fiat;
+}
+
+function formatFiat(val, fiat) {
+  if (val == null || isNaN(val)) return '—';
+  const sym = fiatSymbol(fiat);
+  if (fiat === 'CZK') return val.toFixed(2) + ' Kč';
+  return sym + val.toFixed(4);
+}
+
+function showPriceSpinner(which, show) {
+  const el = document.getElementById(which + '-spinner');
+  if (el) el.style.display = show ? 'block' : 'none';
+}
+
+// ── TICKER BAR ───────────────────────────────────────────────────
+
+function updatePriceTicker() {
+  const p    = S.prices;
+  const fiat = S.displayFiat;
+  const xrpVal = getXrpInFiat(fiat);
+
+  // XRP price
+  if (xrpVal != null) {
+    document.getElementById('xrp-price-val').textContent = formatFiat(xrpVal, fiat);
+    const chgEl = document.getElementById('xrp-price-chg');
+    if (p.xrpChg != null) {
+      const sign = p.xrpChg >= 0 ? '+' : '';
+      chgEl.textContent = sign + p.xrpChg.toFixed(2) + '%';
+      chgEl.className = 'price-change ' + (p.xrpChg >= 0 ? 'up' : 'down');
+    }
+    document.getElementById('xrp-price-src').textContent = p.source === 'dex' ? '▸DEX' : '▸CG';
+    document.getElementById('fiat-xrp-val').textContent = formatFiat(xrpVal, fiat);
+    document.getElementById('fiat-label').textContent = fiat;
+  } else {
+    document.getElementById('xrp-price-val').textContent = '—';
+  }
+
+  // Token price
+  const tokName = S.settings.tokenName;
+  const tokVal  = getTokenInFiat(fiat);
+  const tokItem = document.getElementById('token-price-item');
+  if (tokName) {
+    tokItem.style.display = '';
+    document.getElementById('tok-price-sym').textContent = tokName;
+    document.getElementById('tok-price-val').textContent = tokVal != null ? formatFiat(tokVal, fiat) : '—';
+    const tSrc = document.getElementById('tok-price-src');
+    const srcMap = { dex:'▸DEX', coingecko:'▸CG', xrplmeta:'▸META', amm:'▸AMM' };
+    tSrc.textContent = srcMap[p.tokenSrc] || '';
+    if (p.tokenChg != null) {
+      const chgEl = document.getElementById('tok-price-chg');
+      chgEl.textContent = (p.tokenChg >= 0 ? '+' : '') + p.tokenChg.toFixed(2) + '%';
+      chgEl.className = 'price-change ' + (p.tokenChg >= 0 ? 'up' : 'down');
+    }
+  } else {
+    tokItem.style.display = 'none';
+  }
+
+  // Price detail panel
+  const xrpUsd = p.xrpUsd;
+  if (xrpUsd) {
+    document.getElementById('pd-xrp-usd').textContent = '$' + xrpUsd.toFixed(4);
+    document.getElementById('pd-xrp-eur').textContent = '€' + (p.xrpEur||0).toFixed(4);
+    document.getElementById('pd-xrp-czk').textContent = (p.xrpCzk||0).toFixed(2) + ' Kč';
+  }
+  if (tokName && p.tokenUsd != null) {
+    document.getElementById('pd-tok-row').style.display = '';
+    document.getElementById('pd-tok-label').textContent = tokName + ' / USD';
+    document.getElementById('pd-tok-usd').textContent = '$' + p.tokenUsd.toFixed(8);
+    // Přidej HUT/XRP řádek pokud existuje
+    const xrpRow = document.getElementById('pd-tok-xrp-row');
+    if (xrpRow && p.tokenXrp != null) {
+      xrpRow.style.display = '';
+      document.getElementById('pd-tok-xrp').textContent = p.tokenXrp.toFixed(8) + ' XRP';
+    }
+    const czkRow = document.getElementById('pd-tok-czk-row');
+    if (czkRow && p.tokenCzk != null) {
+      czkRow.style.display = '';
+      document.getElementById('pd-tok-czk').textContent = p.tokenCzk.toFixed(6) + ' Kč';
+    }
+    const offRow = document.getElementById('pd-tok-offers-row');
+    if (offRow && p.tokenOfferCount) {
+      offRow.style.display = '';
+      document.getElementById('pd-tok-offers').textContent = p.tokenOfferCount + ' offers (medián)';
+    }
+  }
+  const srcLabel = { dex:'XRPL DEX (order book)', coingecko:'CoinGecko API', xrplmeta:'xrplmeta.org', amm:'XRPL AMM pool (live)' };
+  document.getElementById('pd-source').textContent = srcLabel[p.tokenSrc] || (p.source || '—');
+  document.getElementById('pd-updated').textContent = p.updatedAt
+    ? p.updatedAt.toLocaleTimeString('cs-CZ') : '—';
+}
+
+// ── CONVERSION BOX ───────────────────────────────────────────────
+
+function updateConversionBox() {
+  const card = document.getElementById('conversion-card');
+  const raw  = parseFloat(S.amount) || 0;
+  const p    = S.prices;
+
+  if (!raw || S.inputMode === 'token' && !S.amount) {
+    // still show card if prices loaded
+    if (!p.xrpUsd) { card.classList.remove('show'); return; }
+  }
+
+  card.classList.add('show');
+
+  const fiat = S.inputMode === 'fiat' ? S.fiatCurrency : S.displayFiat;
+  const cur  = S.currency;
+
+  let tokenAmount = 0, fiatAmount = 0;
+
+  if (S.inputMode === 'token') {
+    tokenAmount = raw;
+    const price = cur === 'XRP' ? getXrpInFiat(fiat) : getTokenInFiat(fiat);
+    fiatAmount  = price != null ? raw * price : null;
+    document.getElementById('conv-label-a').textContent = 'Platíš';
+    document.getElementById('conv-label-b').textContent = '≈ hodnota v ' + fiat;
+    document.getElementById('conv-token-val').textContent = raw + ' ' + (cur === 'XRP' ? 'XRP' : S.settings.tokenName || 'TOKEN');
+    document.getElementById('conv-fiat-val').textContent  = fiatAmount != null ? formatFiat(fiatAmount, fiat) : '—';
+    document.getElementById('conv-rate-val').textContent  = '1 ' + (cur === 'XRP' ? 'XRP' : (S.settings.tokenName||'TOKEN')) + ' = ' + (getXrpInFiat(fiat) != null ? formatFiat(cur==='XRP' ? getXrpInFiat(fiat) : (getTokenInFiat(fiat)||0), fiat) : '—');
+  } else {
+    // fiat mode — user typed fiat amount, show token equivalent
+    fiatAmount  = raw;
+    const price = cur === 'XRP' ? getXrpInFiat(S.fiatCurrency) : getTokenInFiat(S.fiatCurrency);
+    tokenAmount = price && price > 0 ? raw / price : null;
+    document.getElementById('conv-label-a').textContent = 'Fiat částka';
+    document.getElementById('conv-label-b').textContent = '= přepočteno na tokeny';
+    document.getElementById('conv-fiat-val').textContent  = formatFiat(raw, S.fiatCurrency);
+    document.getElementById('conv-token-val').textContent = tokenAmount != null
+      ? tokenAmount.toFixed(6) + ' ' + (cur === 'XRP' ? 'XRP' : (S.settings.tokenName||'TOKEN'))
+      : 'Kurz nedostupný';
+    document.getElementById('conv-rate-val').textContent  = price != null ? '1 ' + (cur==='XRP'?'XRP':(S.settings.tokenName||'TOKEN')) + ' = ' + formatFiat(price, S.fiatCurrency) : '—';
+  }
+
+  // source dot
+  const dot  = document.getElementById('conv-src-dot');
+  const src  = p.source;
+  dot.className = 'conv-source-dot ' + (src==='dex' ? 'dex' : src==='coingecko' ? 'cg' : 'err');
+  document.getElementById('conv-src-text').textContent = src === 'dex' ? 'XRPL DEX (live)' : src === 'coingecko' ? 'CoinGecko API' : 'Kurz nedostupný';
+  document.getElementById('conv-updated').textContent = p.updatedAt ? p.updatedAt.toLocaleTimeString('cs-CZ') : '';
+}
+
+// ── INPUT MODE ───────────────────────────────────────────────────
+
+function setInputMode(mode) {
+  S.inputMode = mode;
+  S.amount = '';
+  document.getElementById('amount-display').textContent = '0';
+  document.getElementById('mode-token').classList.toggle('active', mode==='token');
+  document.getElementById('mode-fiat').classList.toggle('active', mode==='fiat');
+  document.getElementById('currency-toggle-xrp-tok').style.display = mode==='token' ? '' : 'none';
+  document.getElementById('fiat-selector').style.display = mode==='fiat' ? 'flex' : 'none';
+
+  const lbl = mode==='token'
+    ? 'Zadej částku v tokenech'
+    : 'Zadej částku ve ' + S.fiatCurrency;
+  document.getElementById('amount-label-text').textContent = lbl;
+  document.getElementById('amount-currency-badge').textContent = mode==='token'
+    ? (S.currency==='XRP'?'XRP':(S.settings.tokenName||'TOKEN'))
+    : S.fiatCurrency;
+
+  // update quick buttons
+  updateQuickButtons();
+  updateConversionBox();
+}
+
+function setFiat(fiat) {
+  S.fiatCurrency = fiat;
+  ['czk','usd','eur'].forEach(f => document.getElementById('fiat-'+f)?.classList.toggle('active', f.toUpperCase()===fiat));
+  document.getElementById('amount-label-text').textContent = 'Zadej částku ve ' + fiat;
+  document.getElementById('amount-currency-badge').textContent = fiat;
+  updateQuickButtons();
+  updateConversionBox();
+}
+
+function setDisplayFiat(fiat, btn) {
+  S.displayFiat = fiat;
+  S.settings.displayFiat = fiat;
+  ['df-czk','df-usd','df-eur'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+  btn.classList.add('active');
+  updatePriceTicker();
+  updateConversionBox();
+  updateStatsWithFiat();
+}
+
+function updateQuickButtons() {
+  const mode  = S.inputMode;
+  const fiat  = S.fiatCurrency;
+  const qr    = document.getElementById('quick-row');
+  if (mode === 'fiat') {
+    const amounts = fiat==='CZK' ? ['50','100','200','500','1000','2000'] : fiat==='USD' ? ['5','10','20','50','100','200'] : ['5','10','20','50','100','200'];
+    qr.innerHTML = amounts.map(a=>`<button class="quick-btn" onclick="setAmount('${a}')">${a}</button>`).join('');
+  } else {
+    const amounts = ['10','25','50','100','200','500','1000'];
+    qr.innerHTML = amounts.map(a=>`<button class="quick-btn" onclick="setAmount('${a}')">${a}</button>`).join('');
+  }
+}
+
+// ── NUMPAD ───────────────────────────────────────────────────────
+
+function numpad(v) {
+  if (v==='del'){S.amount=S.amount.slice(0,-1);}
+  else if(v==='.'){if(!S.amount.includes('.'))S.amount+='.';}
+  else{if(S.amount.length>=12)return;S.amount=(S.amount==='0'&&v!=='.')?v:S.amount+v;}
+  document.getElementById('amount-display').textContent=S.amount||'0';
+  updateConversionBox();
+}
+
+function setAmount(v){
+  S.amount=v;
+  document.getElementById('amount-display').textContent=v;
+  updateConversionBox();
+}
+
+function setCurrency(cur){
+  S.currency=cur;
+  document.getElementById('btn-xrp').classList.toggle('active',cur==='XRP');
+  document.getElementById('btn-token').classList.toggle('active',cur==='TOKEN');
+  document.getElementById('amount-currency-badge').textContent = cur==='XRP'?'XRP':(S.settings.tokenName||'TOKEN');
+  updateConversionBox();
+}
+
+// ── GENERATE PAYMENT ─────────────────────────────────────────────
+
+async function generatePayment() {
+  let tokenAmount, fiatDisplay;
+  const raw = parseFloat(S.amount) || 0;
+  if (!raw || raw <= 0) { alert('Zadej platnou částku!'); return; }
+
+  const s = S.settings;
+  if (!s.address) { alert('Nastav XRPL adresu v Nastavení!'); switchView('settings',document.querySelectorAll('.nav-btn')[2]); return; }
+
+  const addrOk = await verifyAddressIntegrity(s.address);
+  if (!addrOk) { document.getElementById('tamper-alert').classList.add('show'); alert('⛔ Bezpečnostní varování: adresa nesouhlasí s checksumem!'); return; }
+
+  if (S.inputMode === 'fiat') {
+    // convert fiat → tokens
+    const price = S.currency==='XRP' ? getXrpInFiat(S.fiatCurrency) : getTokenInFiat(S.fiatCurrency);
+    if (!price || price === 0) { alert('Kurz nedostupný — počkej na načtení cen nebo přepni na zadání v tokenech.'); return; }
+    tokenAmount  = raw / price;
+    fiatDisplay  = formatFiat(raw, S.fiatCurrency);
+  } else {
+    tokenAmount = raw;
+    const price = S.currency==='XRP' ? getXrpInFiat(S.displayFiat) : getTokenInFiat(S.displayFiat);
+    fiatDisplay = price != null ? formatFiat(tokenAmount * price, S.displayFiat) : null;
+  }
+
+  tokenAmount = parseFloat(tokenAmount.toFixed(6));
+  const desc  = document.getElementById('desc-input').value.trim();
+  const tag   = s.destTag ? parseInt(s.destTag) : Math.floor(Math.random()*999999);
+  S.session   = { amount: tokenAmount, currency: S.currency, desc, tag, fiatDisplay };
+
+// ── XUMM Payload ──────────────────────────────
+const xamanPayload = {
+  txjson: {
+    TransactionType: 'Payment',
+    Destination: s.address,
+    ...(S.currency === 'XRP'
+      ? { Amount: String(Math.round(tokenAmount * 1e6)) }
+      : {
+          Amount: {
+            value:    String(tokenAmount),
+            currency: s.tokenName  || 'TOKEN',
+            issuer:   s.tokenIssuer || ''
+          }
+        }
+    ),
+    ...(tag ? { DestinationTag: tag } : {}),
+    ...(desc ? { Memos: [{ Memo: {
+      MemoData: Array.from(new TextEncoder().encode(desc))
+                     .map(b=>b.toString(16).padStart(2,'0'))
+                     .join('').toUpperCase()
+    }}]} : {})
+  },
+  options: { submit: true, expire: 10 }
+};
+
+let uri;
+try {
+  if (!XUMM_CONFIG.apiKey || !XUMM_CONFIG.apiSecret) {
+    alert('⚠️ XUMM API klíče nejsou nastaveny!\nJdi do Nastavení → XUMM API a zadej klíče.');
+    return;
+  }
+  const resp = await fetch('https://xumm-proxy.xrplpos.workers.dev/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      apiKey:    XUMM_CONFIG.apiKey,
+      apiSecret: XUMM_CONFIG.apiSecret,
+      payload:   xamanPayload
+    })
+  });
+  const data = await resp.json();
+  if (!data?.next?.always) throw new Error('Chybná odpověď XUMM API');
+  uri = data.next.always;
+  wsLog('✓ XUMM payload vytvořen: ' + uri, 'info');
+} catch(e) {
+  wsLog('✗ XUMM API chyba: ' + e.message, 'err');
+  alert('Chyba při vytváření platby: ' + e.message);
+  return;
+}
+  if (!S.wsOk) connectWS();
+
+  document.getElementById('qr-placeholder').style.display='none';
+  document.getElementById('qr-container').classList.add('visible');
+  document.getElementById('qrcode').innerHTML='';
+  const appW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--app-width'))||480;
+  new QRCode(document.getElementById('qrcode'),{text:uri,width:Math.min(190,appW-100),height:Math.min(190,appW-100),colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M});
+
+  const tokLabel = S.currency==='XRP' ? 'XRP' : (s.tokenName||'TOKEN');
+  document.getElementById('qr-amount-val').textContent = tokenAmount + ' ' + tokLabel;
+  const fiatEl = document.getElementById('qr-amount-fiat');
+  if (fiatDisplay) { fiatEl.textContent = '≈ ' + fiatDisplay; fiatEl.style.display=''; }
+  else fiatEl.style.display='none';
+  document.getElementById('qr-amount-desc').textContent = desc || 'Platba';
+  document.getElementById('addr-verify-full').textContent = s.address;
+  const cs = await computeChecksum(s.address);
+  document.getElementById('addr-checksum').textContent = cs;
+
+  setPaymentStatus('waiting','Čekám na platbu...');
+  document.getElementById('charge-btn').disabled=true;
+  setTimeout(()=>document.getElementById('qrcode').scrollIntoView({behavior:'smooth',block:'center'}),100);
+  wsLog('Platba: '+tokenAmount+' '+tokLabel+(fiatDisplay?' ('+fiatDisplay+')':''), 'info');
+}
+
+function cancelPayment() {
+  S.session=null;
+  document.getElementById('charge-btn').disabled=false;
+  document.getElementById('qr-placeholder').style.display='';
+  document.getElementById('qr-container').classList.remove('visible');
+  document.getElementById('qrcode').innerHTML='';
+  S.amount=''; document.getElementById('amount-display').textContent='0';
+  updateConversionBox();
+}
+
+function setPaymentStatus(type,text) {
+  const map={waiting:'status-waiting',confirmed:'status-confirmed',error:'status-error'};
+  document.getElementById('payment-status').className='payment-status '+(map[type]||'status-waiting');
+  document.getElementById('status-text').textContent=text;
+}
+
+// ── WEBSOCKET ────────────────────────────────────────────────────
+
+function wsURL(){return NETWORKS[S.network].ws;}
+function explorer(){return NETWORKS[S.network].explorer;}
+
+function wsLog(msg,cls=''){
+  const el=document.getElementById('ws-log');
+  const line=document.createElement('div');
+  line.className='log-line '+cls;
+  line.textContent=new Date().toLocaleTimeString('cs-CZ')+' '+msg;
+  el.appendChild(line); el.scrollTop=el.scrollHeight;
+  while(el.children.length>80)el.removeChild(el.firstChild);
+}
+
+function setWsDot(st){
+  document.getElementById('ws-dot').className='ws-dot '+st;
+  document.getElementById('ws-label').textContent={connecting:'...',connected:'live',error:'offline'}[st]||'—';
+}
+
+function connectWS(){
+  // Použijeme sdílené RPC spojení i pro subscribe na platby
+  rpcConnect(wsURL());
+  S.ws   = RPC.ws;
+  S.wsOk = RPC.ready;
+  setWsDot(RPC.ready ? 'connected' : 'connecting');
+  wsLog('Připojuji k ' + wsURL() + '...', 'info');
+
+  // Přihlas se k odběru po připojení
+  const origOpen = RPC.ws.onopen;
+  RPC.ws.onopen = () => {
+    if (origOpen) origOpen();
+    S.wsOk = true;
+    S.wsRetry = 0;
+    setWsDot('connected');
+    wsLog('Připojeno ✓','ok');
+    if (S.settings.address) {
+      RPC.ws.send(JSON.stringify({ command:'subscribe', accounts:[S.settings.address] }));
+    }
+  };
+
+  const origClose = RPC.ws.onclose;
+  RPC.ws.onclose = () => {
+    S.wsOk = false;
+    setWsDot('error');
+    wsLog('Odpojeno','err');
+    if (origClose) origClose();
+    if (S.wsRetry < 10) {
+      const d = Math.min(3000*(S.wsRetry+1), 30000);
+      S.wsRetry++;
+      wsLog('Zkusím za '+(d/1000)+'s...','info');
+      S.wsRetryTimer = setTimeout(connectWS, d);
+    }
+  };
+}
+
+function reconnectWS(){
+  S.wsRetry = 0;
+  if (S.wsRetryTimer) clearTimeout(S.wsRetryTimer);
+  if (RPC.reconnTimer) clearTimeout(RPC.reconnTimer);
+  if (RPC.ws) { try { RPC.ws.close(); } catch(e){} RPC.ws = null; }
+  connectWS();
+}
+
+function handleIncomingTx(msg){
+  const tx=msg.transaction||msg.tx_json||{},meta=msg.meta||{};
+  if(tx.TransactionType!=='Payment')return;
+  if(meta.TransactionResult!=='tesSUCCESS')return;
+  if(tx.Destination!==S.settings.address)return;
+  wsLog('💰 Příchozí! '+tx.hash?.slice(0,12)+'...','ok');
+  if(!S.session){recordUnexpectedTx(tx,meta);return;}
+  const del=meta.delivered_amount||tx.Amount;
+  let amount=0,currency='XRP';
+  if(typeof del==='string'){amount=parseInt(del)/1e6;currency='XRP';}
+  else if(typeof del==='object'){amount=parseFloat(del.value);currency=del.currency;}
+  const sess=S.session;
+  if(sess.tag&&tx.DestinationTag!==parseInt(sess.tag)){wsLog('Tag nesouhlasí','err');return;}
+  // Konfigurovatelná tolerance
+  const tol = (parseFloat(S.settings.tolerance)||1)/100;
+  if(S.currency==='XRP'){const del=meta.delivered_amount||tx.Amount;const recv=parseInt(del)/1e6;if(Math.abs(recv-sess.amount)/sess.amount>tol){wsLog('Částka mimo toleranci: '+recv+' vs '+sess.amount,'err');return;}}
+  confirmPayment(amount,currency,sess.desc,sess.tag,tx.hash,sess.fiatDisplay);
+}
+
+function recordUnexpectedTx(tx,meta){
+  const d=meta.delivered_amount||tx.Amount;
+  let a=0,c='XRP';
+  if(typeof d==='string')a=parseInt(d)/1e6;
+  else if(typeof d==='object'){a=parseFloat(d.value);c=d.currency;}
+  wsLog('Nezaregistrovaná platba: '+a+' '+c,'info');
+  saveTx({amount:a,currency:c,desc:'Neznámá platba',tag:tx.DestinationTag||0,hash:tx.hash||''});
+  renderHistory();updateStats();
+}
+
+function confirmPayment(amount,currency,desc,tag,hash,fiatDisplay){
+  S.session=null;
+  document.getElementById('charge-btn').disabled=false;
+  setPaymentStatus('confirmed','✅ Potvrzeno!');
+  playConfirmSound();
+  vibrateDevice([100,50,100,50,300]);
+
+  // calculate fiat value at time of receipt
+  const cur=currency==='XRP'?'XRP':currency;
+  const price=cur==='XRP'?getXrpInFiat(S.displayFiat):getTokenInFiat(S.displayFiat);
+  const fiatVal=price!=null?amount*price:null;
+
+  saveTx({amount,currency:cur,desc:desc||'Platba',tag,hash:hash||'',fiatVal,fiatCur:S.displayFiat});
+  renderHistory();updateStats();
+
+  document.getElementById('modal-detail').textContent='Přijato '+amount+' '+cur+(desc?' — '+desc:'');
+  document.getElementById('modal-fiat').textContent = fiatDisplay || (fiatVal!=null?'≈ '+formatFiat(fiatVal,S.displayFiat):'');
+  const expLink=document.getElementById('modal-explorer');
+  if(hash){expLink.href=explorer()+hash;expLink.textContent=hash.slice(0,20)+'... → Explorer';expLink.style.display='';}
+  else expLink.style.display='none';
+  document.getElementById('success-modal').classList.add('open');
+}
+
+function saveTx(tx){
+  S.transactions.unshift({id:Date.now(),...tx,time:new Date().toISOString()});
+  localStorage.setItem('xrpl_pos_txs',JSON.stringify(S.transactions.slice(0,200)));
+}
+
+function closeModal(){
+  document.getElementById('success-modal').classList.remove('open');
+  document.getElementById('qr-placeholder').style.display='';
+  document.getElementById('qr-container').classList.remove('visible');
+  document.getElementById('qrcode').innerHTML='';
+  document.getElementById('desc-input').value='';
+  S.amount=''; document.getElementById('amount-display').textContent='0';
+  updateConversionBox();
+}
+
+// ── HISTORY & STATS ──────────────────────────────────────────────
+
+function renderTx(tx){
+  const d=new Date(tx.time);
+  const t=d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
+  const dt=d.toLocaleDateString('cs-CZ',{day:'2-digit',month:'2-digit'});
+  const isXRP=tx.currency==='XRP';
+  const fiatStr=tx.fiatVal!=null?formatFiat(tx.fiatVal,tx.fiatCur||S.displayFiat):'';
+  return `<div class="tx-item" onclick="window.open('${explorer()+tx.hash}','_blank')">
+    <div class="tx-icon ${isXRP?'xrp':'token'}">${isXRP?'⚡':'🪙'}</div>
+    <div class="tx-info"><div class="tx-desc">${tx.desc}</div><div class="tx-time">${dt} ${t}${tx.tag?' · #'+tx.tag:''}</div></div>
+    <div class="tx-right"><div class="tx-amount">${tx.amount} <span class="tx-currency">${tx.currency}</span></div>${fiatStr?'<div class="tx-fiat">≈ '+fiatStr+'</div>':''}</div>
+  </div>`;
+}
+
+function renderHistory(){
+  const txs=S.transactions,empty='<div class="empty-history">Zatím žádné transakce</div>';
+  document.getElementById('tx-history-short').innerHTML=txs.length?txs.slice(0,5).map(renderTx).join(''):empty;
+  const f=document.getElementById('tx-history-full');
+  if(f)f.innerHTML=txs.length?txs.map(renderTx).join(''):empty;
+}
+
+function updateStats(){
+  const txs=S.transactions,tn=S.settings.tokenName||'TOKEN';
+  const xrp=txs.filter(t=>t.currency==='XRP').reduce((s,t)=>s+t.amount,0);
+  const tok=txs.filter(t=>t.currency!=='XRP').reduce((s,t)=>s+t.amount,0);
+  const today=txs.filter(t=>new Date(t.time).toDateString()===new Date().toDateString()).length;
+  document.getElementById('stat-xrp').textContent=parseFloat(xrp.toFixed(4));
+  document.getElementById('stat-token').textContent=parseFloat(tok.toFixed(4));
+  document.getElementById('stat-token-lbl').textContent=tn+' přijato';
+  document.getElementById('stat-count').textContent=txs.length;
+  document.getElementById('stat-today').textContent=today;
+  updateStatsWithFiat();
+}
+
+function updateStatsWithFiat(){
+  const txs=S.transactions,fiat=S.displayFiat;
+  const xrpPrice=getXrpInFiat(fiat)||0;
+  const tokPrice=getTokenInFiat(fiat)||0;
+  const xrpTotal=txs.filter(t=>t.currency==='XRP').reduce((s,t)=>s+t.amount,0);
+  const tokTotal=txs.filter(t=>t.currency!=='XRP').reduce((s,t)=>s+t.amount,0);
+  const xrpFiat=xrpTotal*xrpPrice;
+  const tokFiat=tokTotal*tokPrice;
+  document.getElementById('stat-xrp-fiat').textContent=xrpPrice?'≈ '+formatFiat(xrpFiat,fiat):'';
+  document.getElementById('stat-tok-fiat').textContent=tokPrice?'≈ '+formatFiat(tokFiat,fiat):'';
+}
+
+// ── SECURITY (checksum + PIN) ────────────────────────────────────
+
+async function sha256hex(str){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function computeChecksum(address){
+  const h=await sha256hex(address+DEVICE_SALT);
+  return h.slice(0,2).toUpperCase()+'-'+h.slice(2,4).toUpperCase()+'-'+h.slice(4,6).toUpperCase()+'-'+h.slice(6,8).toUpperCase();
+}
+
+async function saveAddressChecksum(address){
+  const cs=await computeChecksum(address);
+  localStorage.setItem('xrpl_pos_addr_checksum',cs);
+  localStorage.setItem('xrpl_pos_addr_saved',address);
+  return cs;
+}
+
+async function verifyAddressIntegrity(address){
+  if(!address)return true;
+  const storedCs=localStorage.getItem('xrpl_pos_addr_checksum');
+  const storedAddr=localStorage.getItem('xrpl_pos_addr_saved');
+  if(!storedCs)return true;
+  if(storedAddr&&storedAddr!==address)return false;
+  return (await computeChecksum(address))===storedCs;
+}
+
+async function runTamperCheck(){
+  const addr=S.settings.address;
+  if(!addr)return;
+  if(!(await verifyAddressIntegrity(addr))){
+    document.getElementById('tamper-alert').classList.add('show');
+    wsLog('🚨 Adresa nesouhlasí s checksumem!','sec');
+  }
+  updateSecurityStatus();
+}
+
+async function updateSecurityStatus(){
+  const hasPin=!!localStorage.getItem('xrpl_pos_pin_hash');
+  const pinEl=document.getElementById('sec-pin-status');
+  pinEl.className='sec-status-row '+(hasPin?'ok':'bad');
+  document.getElementById('sec-pin-label').textContent=hasPin?'PIN: aktivní ✓':'PIN: není nastaven ✗';
+  const addr=S.settings.address;
+  const csEl=document.getElementById('sec-checksum-status');
+  if(addr){const ok=await verifyAddressIntegrity(addr);csEl.className='sec-status-row '+(ok?'ok':'bad');document.getElementById('sec-checksum-label').textContent=ok?'Checksum: v pořádku ✓':'Checksum: NESOUHLASÍ ✗';}
+  else{csEl.className='sec-status-row bad';document.getElementById('sec-checksum-label').textContent='Checksum: adresa není nastavena';}
+  const isHttps=location.protocol==='https:'||location.hostname==='localhost';
+  const httpsEl=document.getElementById('sec-https-status');
+  httpsEl.className='sec-status-row '+(isHttps?'ok':'bad');
+  document.getElementById('sec-https-label').textContent=isHttps?'HTTPS: zabezpečeno ✓':'HTTPS: NEZABEZPEČENO ✗';
+}
+
+async function hashPin(pin){return sha256hex(pin+'XRPL_POS_PIN_SALT');}
+
+function showPinScreen(mode){S.pinMode=mode;S.pinBuffer='';S.pinAttempts=0;document.getElementById('pin-subtitle').textContent=mode==='unlock'?'Zadej PIN pro odemčení':'Nový 4místný PIN';document.getElementById('pin-error').textContent='';updatePinDots();document.getElementById('pin-screen').classList.add('show');}
+function hidePinScreen(){document.getElementById('pin-screen').classList.remove('show');S.pinBuffer='';}
+function updatePinDots(){for(let i=0;i<4;i++){const d=document.getElementById('pd'+i);d.classList.toggle('filled',i<S.pinBuffer.length);d.classList.remove('error');}}
+function pinShakeError(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.add('error');setTimeout(()=>{for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.remove('error');},600);}
+
+async function pinKey(v){
+  if(S.pinLocked)return;
+  if(v==='del'){S.pinBuffer=S.pinBuffer.slice(0,-1);updatePinDots();return;}
+  if(S.pinBuffer.length>=4)return;
+  S.pinBuffer+=v; updatePinDots();
+  if(S.pinBuffer.length===4){
+    const stored=localStorage.getItem('xrpl_pos_pin_hash');
+    const h=await hashPin(S.pinBuffer);
+    if(h===stored){hidePinScreen();wsLog('🔓 Přihlášení OK','ok');}
+    else{S.pinAttempts++;S.pinBuffer='';updatePinDots();pinShakeError();if(S.pinAttempts>=5){document.getElementById('pin-error').textContent='⛔ Příliš pokusů, čekej 30s';S.pinLocked=true;setTimeout(()=>{S.pinLocked=false;S.pinAttempts=0;document.getElementById('pin-error').textContent='';},30000);}else document.getElementById('pin-error').textContent='Špatný PIN ('+(5-S.pinAttempts)+' zbývá)';}
+  }
+}
+
+async function savePin(){
+  const p1=document.getElementById('set-pin').value,p2=document.getElementById('set-pin2').value;
+  if(p1.length!==4||!/^\d{4}$/.test(p1)){alert('PIN = 4 číslice');return;}
+  if(p1!==p2){alert('PINy se neshodují!');return;}
+  localStorage.setItem('xrpl_pos_pin_hash',await hashPin(p1));
+  document.getElementById('set-pin').value='';document.getElementById('set-pin2').value='';
+  updateSecurityStatus();alert('✅ PIN nastaven!');
+}
+
+function clearPin(){if(!confirm('Odebrat PIN?'))return;localStorage.removeItem('xrpl_pos_pin_hash');updateSecurityStatus();alert('PIN odebrán.');}
+function pinForgot(){if(confirm('Reset PINu?')){localStorage.removeItem('xrpl_pos_pin_hash');hidePinScreen();updateSecurityStatus();}}
+
+// ── NETWORK & SETTINGS ───────────────────────────────────────────
+
+function setNetwork(net){
+  S.network=net;
+  document.getElementById('net-badge').textContent=net==='mainnet'?'MAINNET':'TESTNET';
+  document.getElementById('net-badge').className='net-badge '+net;
+  document.getElementById('net-main').className='net-opt'+(net==='mainnet'?' active-main':'');
+  document.getElementById('net-test').className='net-opt'+(net==='testnet'?' active-test':'');
+  S.settings.network=net;localStorage.setItem('xrpl_pos_settings',JSON.stringify(S.settings));
+  wsLog('Síť: '+net.toUpperCase(),'info');reconnectWS();
+}
+
+function toggleNetInfo(){switchView('settings',document.querySelectorAll('.nav-btn')[2]);}
+
+async function saveSettings(){
+  const prev=S.settings.address;
+  S.settings={...S.settings,
+    address:document.getElementById('set-address').value.trim(),
+    tokenName:document.getElementById('set-token-name').value.trim()||'TOKEN',
+    tokenIssuer:document.getElementById('set-token-issuer').value.trim(),
+    shopName:document.getElementById('set-shop-name').value.trim(),
+    destTag:document.getElementById('set-dest-tag').value.trim(),
+    cgTokenId:document.getElementById('set-cg-id').value.trim(),
+    ...(()=>{ const k=document.getElementById('set-xumm-key').value.trim(); const sec=document.getElementById('set-xumm-secret').value.trim(); if(k) localStorage.setItem('xumm_api_key',k); if(sec) localStorage.setItem('xumm_api_secret',sec); return {}; })(),
+    dexIssuer:document.getElementById('set-dex-issuer').value.trim(),
+    tolerance:parseFloat(document.getElementById('set-tolerance')?.value)||1,
+    appWidth:parseInt(document.getElementById('width-slider').value),
+    fontScale:parseFloat(document.getElementById('font-slider').value),
+    btnHeight:parseInt(document.getElementById('btn-slider').value),
+    displayFiat:S.displayFiat,
+  };
+  localStorage.setItem('xrpl_pos_settings',JSON.stringify(S.settings));
+  if(S.settings.address&&S.settings.address!==prev){const cs=await saveAddressChecksum(S.settings.address);wsLog('🔏 Checksum: '+cs,'sec');}
+  applyDisplaySettings();loadSettings();updateStats();
+  if(S.settings.address!==prev)reconnectWS();
+  await updateSecurityStatus();
+  fetchAllPrices();
+  alert('✅ Uloženo!');
+}
+
+function loadSettings(){
+  const s=S.settings;
+  document.getElementById('set-address').value=s.address||'';
+  document.getElementById('set-token-name').value=s.tokenName||'';
+  document.getElementById('set-token-issuer').value=s.tokenIssuer||'';
+  document.getElementById('set-shop-name')&&(document.getElementById('set-shop-name').value=s.shopName||'');
+  document.getElementById('set-dest-tag').value=s.destTag||'';
+  document.getElementById('set-cg-id').value=s.cgTokenId||'';
+  const xk=document.getElementById('set-xumm-key'); if(xk) xk.placeholder=localStorage.getItem('xumm_api_key')?'✅ API Key uložen — pro změnu zadej nový':'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+  const xs=document.getElementById('set-xumm-secret'); if(xs) xs.placeholder=localStorage.getItem('xumm_api_secret')?'✅ Secret uložen — pro změnu zadej nový':'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+  document.getElementById('set-dex-issuer').value=s.dexIssuer||'';
+  if(s.appWidth){document.getElementById('width-slider').value=s.appWidth;document.getElementById('width-val').textContent=s.appWidth+'px';}
+  if(s.fontScale){document.getElementById('font-slider').value=s.fontScale;document.getElementById('font-val').textContent=Math.round(s.fontScale*100)+'%';}
+  if(s.btnHeight){document.getElementById('btn-slider').value=s.btnHeight;document.getElementById('btn-val').textContent=s.btnHeight+'px';}
+  if(s.network)setNetwork(s.network);
+  if(s.tolerance&&document.getElementById('set-tolerance'))document.getElementById('set-tolerance').value=s.tolerance;
+  if(s.tokenName){document.getElementById('btn-token').textContent=s.tokenName;document.getElementById('tok-price-sym').textContent=s.tokenName;document.getElementById('token-price-item').style.display='';}
+  if(s.address)document.getElementById('wallet-display').textContent=s.address.slice(0,6)+'...'+s.address.slice(-4);
+  if(s.displayFiat){S.displayFiat=s.displayFiat;['czk','usd','eur'].forEach(f=>{const b=document.getElementById('df-'+f);if(b)b.classList.toggle('active',f.toUpperCase()===s.displayFiat);});}
+}
+
+function applyDisplaySettings(){
+  const s=S.settings,r=document.documentElement;
+  r.style.setProperty('--app-width',(s.appWidth||480)+'px');
+  r.style.setProperty('--font-scale',s.fontScale||1);
+  if(s.btnHeight)document.querySelectorAll('.numpad-btn').forEach(b=>b.style.height=s.btnHeight+'px');
+}
+
+function previewWidth(v){document.documentElement.style.setProperty('--app-width',v+'px');document.getElementById('width-val').textContent=v+'px';}
+function previewFont(v){document.documentElement.style.setProperty('--font-scale',v);document.getElementById('font-val').textContent=Math.round(v*100)+'%';}
+function previewBtnHeight(v){document.querySelectorAll('.numpad-btn').forEach(b=>b.style.height=v+'px');document.getElementById('btn-val').textContent=v+'px';}
+
+function switchView(name,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  btn.classList.add('active');
+  document.querySelector('.scroll-content').scrollTop=0;
+  if(name==='stats'){renderHistory();updateStats();updatePriceTicker();}
+  if(name==='settings')updateSecurityStatus();
+}
+
+function dismissAlert(id){document.getElementById(id).classList.remove('show');}
+
+function copyAddress(){
+  const addr=S.settings.address;if(!addr)return;
+  navigator.clipboard?.writeText(addr).then(()=>{const el=document.getElementById('wallet-display'),orig=el.textContent;el.textContent='✅ Zkopírováno!';setTimeout(()=>el.textContent=orig,1500);});
+}
+
+// PWA
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();S.deferredPrompt=e;document.getElementById('install-banner').classList.add('show');});
+function installApp(){if(!S.deferredPrompt)return;S.deferredPrompt.prompt();S.deferredPrompt.userChoice.then(()=>{S.deferredPrompt=null;document.getElementById('install-banner').classList.remove('show');});}
+if('serviceWorker'in navigator){const sw=`const C='xrpl-pos-v5-hut';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['/']))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`;navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'text/javascript'}))).catch(()=>{});}
+const mf={name:'XRPL POS v6.0 — HUT',short_name:'HUT POS',description:'POS v6.0 pro HUT token na XRP Ledger s DEX cenou',start_url:'.',display:'standalone',background_color:'#0a0a0f',theme_color:'#00d4ff',orientation:'portrait',icons:[{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="%230a0a0f"/><text y="130" x="50" font-size="120">⚡</text></svg>',sizes:'192x192',type:'image/svg+xml'}]};
+document.getElementById('manifest-link').href=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:'application/json'}));
+
+// ── BOOT ─────────────────────────────────────────────────────────
+
+// ── HUT TOKEN DEFAULTS ───────────────────────────────────────────
+const HUT_DEFAULTS = {
+  tokenName:   'HUT',
+  tokenIssuer: 'rnRkfdsFStM3aP6VdcnJKYPjeM7WwYpfnU',
+  cgTokenId:   '',
+};
+
+async function boot(){
+  // Nastav HUT jako výchozí token pokud ještě není nic nastaveno
+  if (!S.settings.tokenName) {
+    S.settings = { ...S.settings, ...HUT_DEFAULTS };
+    localStorage.setItem('xrpl_pos_settings', JSON.stringify(S.settings));
+    wsLog('🪙 HUT token přednastaveno (rnRkfds...)', 'price');
+  }
+
+  loadSettings();
+  applyDisplaySettings();
+  updateQuickButtons();
+  renderHistory();
+  updateStats();
+  await updateSecurityStatus();
+  await runTamperCheck();
+  if (!!localStorage.getItem('xrpl_pos_pin_hash')) showPinScreen('unlock');
+
+  // Spusť RPC WS ihned — potřebujeme ho pro ceny i bez adresy
+  rpcConnect(wsURL());
+  if (S.settings.address) {
+    S.ws = RPC.ws;
+    // Subscribe se odešle automaticky po připojení v rpcConnect → onopen
+    setTimeout(() => {
+      if (RPC.ready && S.settings.address) {
+        RPC.ws.send(JSON.stringify({ command:'subscribe', accounts:[S.settings.address] }));
+        setWsDot('connected');
+        wsLog('Sleduju adresu: ' + S.settings.address, 'info');
+      }
+    }, 2000);
+  }
+
+  // Počkej na WS připojení pak načti ceny (max 5s)
+  // Načti offline cache okamžitě pro rychlejší start
+  const cached = loadPriceCache();
+  if (cached) {
+    S.prices = { ...S.prices, ...cached };
+    updatePriceTicker(); updateConversionBox();
+    if (cached.cacheAge) wsLog('📦 Offline cache: kurzy staré ' + cached.cacheAge + ' min', 'info');
+  }
+  await new Promise(r => setTimeout(r, RPC.ready ? 100 : 2500));
+  fetchAllPrices();
+  S.priceTimer = setInterval(fetchAllPrices, 60000);
+}
+
+boot();
+</script>
+
+<script>
+const LICENSE_SERVER = "https://xrplpos-license.xrplpos.workers.dev";
+const LICENSE_GRACE_HOURS = 24;
+const LICENSE_CHECK_INTERVAL = 3600;
+
+const License = {
+  STORAGE_KEY: "xrpl_pos_license",
+  load() { try { const r = localStorage.getItem(this.STORAGE_KEY); return r ? JSON.parse(r) : null; } catch { return null; } },
+  save(s) { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(s)); },
+  clear() { localStorage.removeItem(this.STORAGE_KEY); },
+  domain() { return window.location.hostname; },
+  isGraceValid(s) { if (!s?.last_validated) return false; return (Date.now() - s.last_validated) / 3600000 < LICENSE_GRACE_HOURS; },
+};
+
+async function licenseValidateOnServer(key) {
+  try {
+    const res = await fetch(`${LICENSE_SERVER}/validate`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({key, domain:License.domain()}) });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+async function licenseInit() {
+  const host = License.domain();
+  if (host === "localhost" || host === "127.0.0.1" || host === "") { licenseGrantAccess(); return; }
+  const saved = License.load();
+  if (saved?.key) {
+    const result = await licenseValidateOnServer(saved.key);
+    if (result?.valid) { License.save({...saved, last_validated:Date.now()}); licenseGrantAccess(); scheduleRevalidation(); return; }
+    if (result === null && License.isGraceValid(saved)) { licenseGrantAccess(); scheduleRevalidation(); return; }
+    License.clear();
+    licenseShowGate(result?.reason || "Licence neplatná nebo expirovala");
+    return;
+  }
+  licenseShowGate(null);
+}
+
+function scheduleRevalidation() {
+  setTimeout(async () => {
+    const saved = License.load();
+    if (!saved?.key) return;
+    const result = await licenseValidateOnServer(saved.key);
+    if (result?.valid) { License.save({...saved, last_validated:Date.now()}); scheduleRevalidation(); }
+    else if (result !== null) { License.clear(); licenseShowGate("Platnost licence vypršela."); }
+    else scheduleRevalidation();
+  }, LICENSE_CHECK_INTERVAL * 1000);
+}
+
+function licenseGrantAccess() {
+  const gate = document.getElementById("license-gate");
+  if (gate) gate.remove();
+  const app = document.getElementById("app");
+  if (app) app.style.display = "";
+}
+
+function licenseShowGate(errorMsg) {
+  const app = document.getElementById("app");
+  if (app) app.style.display = "none";
+  if (document.getElementById("license-gate")) { document.getElementById("license-error").textContent = errorMsg || ""; return; }
+  const gate = document.createElement("div");
+  gate.id = "license-gate";
+  gate.innerHTML = `<div id="license-overlay"><div id="license-box">
+    <div id="license-logo">⚡ XRPL POS</div>
+    <div id="license-title">Aktivace licence</div>
+    <div id="license-subtitle">Zadej licenční klíč pro aktivaci</div>
+    <input id="license-input" type="text" placeholder="XPOS-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false"/>
+    <div id="license-error">${errorMsg || ""}</div>
+    <button id="license-btn" onclick="licenseActivate()">Aktivovat</button>
+    <div id="license-info">Klíč získáš u prodejce</div>
+  </div></div>`;
+  const style = document.createElement("style");
+  style.textContent = `
+    #license-overlay{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace}
+    #license-box{background:#0f1117;border:1px solid #2a2d3a;border-radius:16px;padding:40px 32px;width:min(400px,90vw);display:flex;flex-direction:column;align-items:center;gap:12px}
+    #license-logo{font-size:28px;font-weight:bold;color:#32c882;letter-spacing:2px}
+    #license-title{font-size:18px;color:#e0e0e0}
+    #license-subtitle{font-size:12px;color:#666;margin-bottom:8px}
+    #license-input{width:100%;padding:12px 16px;background:#1a1d26;border:1px solid #333;border-radius:8px;color:#e0e0e0;font-family:'Space Mono',monospace;font-size:14px;letter-spacing:2px;text-align:center;outline:none;box-sizing:border-box}
+    #license-input:focus{border-color:#32c882}
+    #license-error{font-size:12px;color:#e05555;min-height:16px;text-align:center}
+    #license-btn{width:100%;padding:13px;background:#32c882;border:none;border-radius:8px;color:#0a0f0a;font-family:'Space Mono',monospace;font-size:14px;font-weight:bold;cursor:pointer}
+    #license-btn:disabled{background:#1a4a32;color:#333;cursor:default}
+    #license-info{font-size:11px;color:#555}`;
+  document.head.appendChild(style);
+  document.body.appendChild(gate);
+  document.getElementById("license-input").addEventListener("keydown", e => { if (e.key==="Enter") licenseActivate(); });
+}
+
+async function licenseActivate() {
+  const input = document.getElementById("license-input");
+  const btn = document.getElementById("license-btn");
+  const errEl = document.getElementById("license-error");
+  const key = input.value.trim();
+  if (key.length < 10) { errEl.textContent = "Zadej platný licenční klíč"; return; }
+  btn.disabled = true; btn.textContent = "Ověřuji…"; errEl.textContent = "";
+  let result = null;
+  try {
+    const res = await fetch(`${LICENSE_SERVER}/activate`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({key, domain:License.domain()}) });
+    result = await res.json();
+  } catch { errEl.textContent = "Nelze se připojit k licenčnímu serveru"; btn.disabled=false; btn.textContent="Aktivovat"; return; }
+  if (result?.ok) {
+    License.save({key, plan:result.plan, expires:result.expires, last_validated:Date.now(), domain:License.domain()});
+    btn.textContent = "✓ Aktivováno!";
+    setTimeout(() => licenseGrantAccess(), 800);
+    scheduleRevalidation();
+  } else { errEl.textContent = result?.message || "Neplatný klíč"; btn.disabled=false; btn.textContent="Aktivovat"; }
+}
+
+document.addEventListener("DOMContentLoaded", licenseInit);
+</script>
+</body>
+</html>
