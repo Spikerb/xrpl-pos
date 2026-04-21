@@ -1817,7 +1817,7 @@ function updateConversionBox() {
   const raw = parseFloat(S.amount)||0;
   const card = document.getElementById('conv-card');
   if (!raw || raw<=0) { card.classList.remove('show'); return; }
-  // card.classList.add('show'); // skryto
+   card.classList.add('show');  
 
   if (S.inputMode==='fiat') {
     const price = getXrpInFiat(S.fiatInput);
