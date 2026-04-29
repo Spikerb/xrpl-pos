@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XRPL POS — Získat licenci</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #0f1628;
+    --bg3: #141d35;
+    --border: #1e2d50;
+    --accent: #3d7fff;
+    --accent2: #00d4ff;
+    --accent3: #7b5ea7;
+    --text: #e8edf8;
+    --text2: #8899bb;
+    --text3: #4a5f8a;
+    --success: #00e5a0;
+    --warning: #ffb347;
+    --error: #ff5577;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -20%;
+    width: 60%;
+    height: 80%;
+    background: radial-gradient(ellipse, rgba(61,127,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    animation: pulse 8s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.7; }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* HEADER */
+  header {
+    padding: 32px 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text span { color: var(--accent2); }
+
+  .header-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--success);
+    border: 1px solid var(--success);
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  /* HERO */
+  .hero {
+    padding: 60px 0 48px;
+    text-align: center;
+  }
+
+  .hero-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent2);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    padding: 6px 16px;
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 20px;
+    background: rgba(0,212,255,0.05);
+  }
+
+  .hero h1 {
+    font-family: var(--mono);
+    font-size: clamp(32px, 6vw, 56px);
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 20px;
+    letter-spacing: -2px;
+  }
+
+  .hero h1 .line1 { color: var(--text); }
+  .hero h1 .line2 {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero p {
+    font-size: 17px;
+    color: var(--text2);
+    max-width: 480px;
+    margin: 0 auto 48px;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  /* PRICE CARD */
+  .price-block {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    margin-bottom: 60px;
+    flex-wrap: wrap;
+  }
+
+  .price-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .price-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  .price-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .price-amount {
+    font-family: var(--mono);
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .price-amount span {
+    font-size: 24px;
+    color: var(--accent2);
+    margin-left: 6px;
+  }
+
+  .price-note {
+    font-size: 13px;
+    color: var(--text3);
+    margin-top: 8px;
+  }
+
+  .features-list {
+    list-style: none;
+    text-align: left;
+  }
+
+  .features-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 14px;
+    color: var(--text2);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .features-list li:last-child { border-bottom: none; }
+
+  .features-list li::before {
+    content: '✓';
+    color: var(--success);
+    font-family: var(--mono);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* FORM SECTION */
+  .form-section {
+    max-width: 520px;
+    margin: 0 auto 80px;
+  }
+
+  .form-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .form-card::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; right: -60px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(61,127,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .form-title {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .form-subtitle {
+    font-size: 14px;
+    color: var(--text2);
+    margin-bottom: 32px;
+    line-height: 1.5;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  input[type="email"] {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-family: var(--sans);
+    font-size: 15px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  input[type="email"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(61,127,255,0.1);
+  }
+
+  input[type="email"]::placeholder { color: var(--text3); }
+
+  .btn-generate {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-top: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-generate:hover { opacity: 0.9; }
+  .btn-generate:active { transform: scale(0.99); }
+  .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-generate .btn-text { transition: opacity 0.2s; }
+  .btn-generate.loading .btn-text { opacity: 0; }
+
+  .btn-spinner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .btn-generate.loading .btn-spinner { opacity: 1; }
+
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* SUCCESS STATE */
+  .result-card {
+    display: none;
+    background: var(--bg3);
+    border: 1px solid rgba(0,229,160,0.2);
+    border-radius: 16px;
+    padding: 28px;
+    margin-top: 24px;
+  }
+
+  .result-card.show { display: block; animation: fadeIn 0.4s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .result-icon {
+    width: 36px; height: 36px;
+    background: rgba(0,229,160,0.1);
+    border: 1px solid rgba(0,229,160,0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .result-title {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--success);
+  }
+
+  .result-subtitle {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+
+  .payment-detail {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    gap: 12px;
+  }
+
+  .payment-detail:last-child { border-bottom: none; }
+
+  .pd-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .pd-value {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    text-align: right;
+    word-break: break-all;
+  }
+
+  .pd-value.highlight {
+    color: var(--warning);
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .pd-value.amount {
+    color: var(--accent2);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .copy-btn {
+    background: rgba(61,127,255,0.1);
+    border: 1px solid rgba(61,127,255,0.2);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .copy-btn:hover { background: rgba(61,127,255,0.2); }
+  .copy-btn.copied { color: var(--success); border-color: rgba(0,229,160,0.3); }
+
+  .memo-warning {
+    background: rgba(255,179,71,0.08);
+    border: 1px solid rgba(255,179,71,0.2);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--warning);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    line-height: 1.5;
+  }
+
+  .memo-warning::before { content: '⚠'; flex-shrink: 0; }
+
+  /* ERROR */
+  .error-msg {
+    display: none;
+    background: rgba(255,85,119,0.08);
+    border: 1px solid rgba(255,85,119,0.2);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--error);
+    margin-top: 16px;
+  }
+
+  .error-msg.show { display: block; animation: fadeIn 0.3s ease; }
+
+  /* HOW IT WORKS */
+  .how-section {
+    padding: 60px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .section-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 40px;
+    text-align: center;
+  }
+
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px;
+  }
+
+  .step-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    position: relative;
+  }
+
+  .step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  .step-icon { font-size: 24px; margin-bottom: 12px; }
+
+  .step-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .step-desc {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+
+  .connector {
+    position: absolute;
+    right: -13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text3);
+    font-size: 16px;
+    z-index: 2;
+  }
+
+  /* FOOTER */
+  footer {
+    padding: 32px 0;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 13px;
+    color: var(--text3);
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+
+  @media (max-width: 600px) {
+    .price-block { flex-direction: column; align-items: stretch; }
+    .form-card { padding: 28px 24px; }
+    .hero { padding: 40px 0 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <a href="#" class="logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">XRPL <span>POS</span></div>
+    </a>
+    <div style="display:flex;align-items:center;gap:12px;"><select id="lang-select" onchange="applyLang(this.value, true)" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:14px;cursor:pointer;outline:none;">
+<option value="cs" selected>🇨🇿 Čeština</option>
+<option value="en">🇬🇧 English</option>
+<option value="de">🇩🇪 Deutsch</option>
+<option value="sk">🇸🇰 Slovenčina</option>
+<option value="hu">🇭🇺 Magyar</option>
+<option value="pl">🇵🇱 Polski</option>
+<option value="fr">🇫🇷 Français</option>
+<option value="es">🇪🇸 Español</option>
+<option value="it">🇮🇹 Italiano</option>
+<option value="pt">🇵🇹 Português</option>
+<option value="ro">🇷🇴 Română</option>
+<option value="hr">🇭🇷 Hrvatski</option>
+<option value="sr">🇷🇸 Srpski</option>
+<option value="bg">🇧🇬 Български</option>
+<option value="uk">🇺🇦 Українська</option>
+<option value="ru">🇷🇺 Русский</option>
+<option value="tr">🇹🇷 Türkçe</option>
+<option value="el">🇬🇷 Ελληνικά</option>
+<option value="nl">🇳🇱 Nederlands</option>
+<option value="sv">🇸🇪 Svenska</option>
+<option value="no">🇳🇴 Norsk</option>
+<option value="da">🇩🇰 Dansk</option>
+<option value="fi">🇫🇮 Suomi</option>
+<option value="et">🇪🇪 Eesti</option>
+<option value="lv">🇱🇻 Latviešu</option>
+<option value="lt">🇱🇹 Lietuvių</option>
+<option value="sl">🇸🇮 Slovenščina</option>
+<option value="ar">🇸🇦 العربية</option>
+<option value="he">🇮🇱 עברית</option>
+<option value="fa">🇮🇷 فارسی</option>
+<option value="hi">🇮🇳 हिन्दी</option>
+<option value="bn">🇧🇩 বাংলা</option>
+<option value="zh">🇨🇳 中文</option>
+<option value="ja">🇯🇵 日本語</option>
+<option value="ko">🇰🇷 한국어</option>
+<option value="th">🇹🇭 ภาษาไทย</option>
+<option value="vi">🇻🇳 Tiếng Việt</option>
+<option value="id">🇮🇩 Bahasa Indonesia</option>
+<option value="ms">🇲🇾 Bahasa Melayu</option>
+<option value="tl">🇵🇭 Filipino</option>
+<option value="sw">🇰🇪 Kiswahili</option>
+<option value="af">🇿🇦 Afrikaans</option>
+</select><div class="header-badge" id="badge-mainnet">● MAINNET</div></div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-tag" id="hero-tag">Jednorázová licence</div>
+    <h1>
+      <div class="line1" id="hero-h1-line1">Přijímejte XRP platby</div>
+      <div class="line2" id="hero-h1-line2">kdekoliv a kdykoliv</div>
+    </h1>
+    <p id="hero-p">Profesionální POS terminál pro XRP Ledger. Žádné předplatné, žádné poplatky za transakce — zaplaťte jednou, používejte navždy.</p>
+  </section>
+
+  <!-- PRICE + FEATURES -->
+  <div class="price-block">
+    <div class="price-card">
+      <div class="price-label" id="price-label">Cena licence</div>
+      <div class="price-amount">15<span>XRP</span></div>
+      <div class="price-note" id="price-note">jednorázová platba</div>
+    </div>
+    <ul class="features-list">
+      <li id="f1">Neomezený počet transakcí</li>
+      <li id="f2">Platby v XRP i fiat měnách</li>
+      <li id="f3">Automatický přepočet kurzu</li>
+      <li id="f4">Denní souhrn emailem</li>
+      <li id="f5">Export do CSV / Excel</li>
+      <li id="f6">Více zařízení na jednu licenci</li>
+      <li id="f7">Aktualizace zdarma</li>
+    </ul>
+  </div>
+
+  <!-- FORM -->
+  <section class="form-section">
+    <div class="form-card">
+      <div class="form-title" id="form-title">Získat licenci</div>
+      <div class="form-subtitle" id="form-subtitle">Zadejte svůj email — pošleme vám platební instrukce s unikátním kódem pro identifikaci vaší platby.</div>
+
+      <div class="form-group">
+        <label for="email" id="email-label">Váš email</label>
+        <input type="email" id="email" placeholder="vas@email.cz" autocomplete="email">
+      </div>
+
+      <button class="btn-generate" id="btn-generate" onclick="generateLicense()">
+        <span class="btn-text" id="btn-text">ZÍSKAT PLATEBNÍ INSTRUKCE</span>
+        <div class="btn-spinner"><div class="spinner"></div></div>
+      </button>
+
+      <div class="error-msg" id="error-msg"></div>
+
+      <!-- SUCCESS RESULT -->
+      <div class="result-card" id="result-card">
+        <div class="result-header">
+          <div class="result-icon">✓</div>
+          <div>
+            <div class="result-title" id="result-title">Platební instrukce připraveny</div>
+            <div class="result-subtitle" id="result-subtitle">Detaily byly zaslány na váš email</div>
+          </div>
+        </div>
+
+        <div class="payment-detail">
+          <div class="pd-label" id="amount-label">Částka</div>
+          <div class="pd-value amount">15 XRP</div>
+        </div>
+
+        <div class="payment-detail">
+          <div class="pd-label" id="address-label">Adresa</div>
+          <div class="pd-value" id="res-address" style="font-size:11px;"></div>
+          <button class="copy-btn" onclick="copyText('res-address', this)">kopírovat</button>
+        </div>
+
+        <div class="payment-detail">
+          <div class="pd-label" id="memo-label">Memo (NUTNÉ!)</div>
+          <div class="pd-value highlight" id="res-memo"></div>
+          <button class="copy-btn" onclick="copyText('res-memo', this)">kopírovat</button>
+        </div>
+
+        <div class="memo-warning" id="memo-warning-box">
+          Memo <strong id="res-memo-warn"></strong> musí být zadáno přesně — jinak nelze platbu spárovat s vaší licencí!
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-section">
+    <div class="section-tag" id="how-title">Jak to funguje</div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num" id="s1-num">KROK 01</div>
+        <div class="step-icon">📧</div>
+        <div class="step-title" id="s1-title">Zadejte email</div>
+        <div class="step-desc" id="s1-desc">Vyplňte formulář výše a získejte unikátní platební instrukce.</div>
+        <div class="connector">→</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num" id="s2-num">KROK 02</div>
+        <div class="step-icon">⚡</div>
+        <div class="step-title" id="s2-title">Pošlete XRP</div>
+        <div class="step-desc" id="s2-desc">Odešlete 15 XRP na naši adresu s Memo kódem z emailu.</div>
+        <div class="connector">→</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num" id="s3-num">KROK 03</div>
+        <div class="step-icon">✅</div>
+        <div class="step-title" id="s3-title">Licence aktivována</div>
+        <div class="step-desc" id="s3-desc">Do několika sekund obdržíte email s licenčním kódem.</div>
+        <div class="connector">→</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num" id="s4-num">KROK 04</div>
+        <div class="step-icon">🚀</div>
+        <div class="step-title" id="s4-title">Začněte přijímat</div>
+        <div class="step-desc" id="s4-desc">Zadejte kód do POS aplikace a přijímejte platby okamžitě.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>XRPL POS &copy; 2026 &nbsp;|&nbsp; <a href="mailto:info@xrplpos.cz">info@xrplpos.cz</a> &nbsp;|&nbsp; <a href="https://xrplpos.cz">xrplpos.cz</a></p>
+  </footer>
+</div>
+
+<script>
+let s="https://xrpl-monitor.xrplpos.workers.dev";async function generateLicense(){var e=document.getElementById("email").value.trim(),t=document.getElementById("btn-generate"),i=document.getElementById("error-msg"),n=document.getElementById("result-card");if(i.classList.remove("show"),n.classList.remove("show"),e&&e.includes("@")){t.classList.add("loading"),t.disabled=!0;try{var a=await fetch(s+"/license/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:e})}),o=await a.json();if(!a.ok||!o.success)throw new Error(o.message||"Nastala chyba při generování licence.");document.getElementById("res-address").textContent=o.xrpl_address,document.getElementById("res-memo").textContent=o.memo_code,document.getElementById("res-memo-warn").textContent=o.memo_code,n.classList.add("show"),n.scrollIntoView({behavior:"smooth",block:"nearest"})}catch(e){r(e.message||"Připojení selhalo. Zkuste to znovu.")}finally{t.classList.remove("loading"),t.disabled=!1}}else r("Zadejte platnou emailovou adresu.")}function r(e){var t=document.getElementById("error-msg");t.textContent=e,t.classList.add("show")}function e(e,t){e=document.getElementById(e).textContent;navigator.clipboard.writeText(e).then(()=>{t.textContent="✓ zkopírováno",t.classList.add("copied"),setTimeout(()=>{t.textContent="kopírovat",t.classList.remove("copied")},2e3)})}document.getElementById("email").addEventListener("keydown",e=>{"Enter"===e.key&&generateLicense()});let t={cs:{page_title:"XRPL POS — Získat licenci",hero_tag:"Jednorázová licence",hero_h1_line1:"Přijímejte XRP platby",hero_h1_line2:"kdekoliv a kdykoliv",hero_p:"Profesionální POS terminál pro XRP Ledger. Žádné předplatné, žádné poplatky za transakce — zaplaťte jednou, používejte navždy.",price_label:"Cena licence",price_note:"jednorázová platba",f1:"Neomezený počet transakcí",f2:"Platby v XRP i fiat měnách",f3:"Automatický přepočet kurzu",f4:"Denní souhrn emailem",f5:"Export do CSV / Excel",f6:"Více zařízení na jednu licenci",f7:"Aktualizace zdarma",form_title:"Získat licenci",form_subtitle:"Zadejte svůj email — pošleme vám platební instrukce s unikátním kódem pro identifikaci vaší platby.",email_label:"Váš email",email_placeholder:"vas@email.cz",btn_text:"ZÍSKAT PLATEBNÍ INSTRUKCE",result_title:"Platební instrukce připraveny",result_subtitle:"Detaily byly zaslány na váš email",amount_label:"Částka",address_label:"Adresa",memo_label:"Memo (NUTNÉ!)",copy_btn:"kopírovat",copied_btn:"✓ zkopírováno",memo_warning:"musí být zadáno přesně — jinak nelze platbu spárovat s vaší licencí!",how_title:"Jak to funguje",s1_num:"KROK 01",s1_title:"Zadejte email",s1_desc:"Vyplňte formulář výše a získejte unikátní platební instrukce.",s2_num:"KROK 02",s2_title:"Pošlete XRP",s2_desc:"Odešlete 15 XRP na naši adresu s Memo kódem z emailu.",s3_num:"KROK 03",s3_title:"Licence aktivována",s3_desc:"Do několika sekund obdržíte email s licenčním kódem.",s4_num:"KROK 04",s4_title:"Začněte přijímat",s4_desc:"Zadejte kód do POS aplikace a přijímejte platby okamžitě.",error_email:"Zadejte platnou emailovou adresu.",error_generic:"Připojení selhalo. Zkuste to znovu.",badge_mainnet:"● MAINNET",footer:"XRPL POS"},en:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},de:{page_title:"XRPL POS — Lizenz erwerben",hero_tag:"Einmalige Lizenz",hero_h1_line1:"XRP-Zahlungen akzeptieren",hero_h1_line2:"überall und jederzeit",hero_p:"Professionelles POS-Terminal für XRP Ledger. Kein Abonnement, keine Transaktionsgebühren — einmal bezahlen, für immer nutzen.",price_label:"Lizenzpreis",price_note:"Einmalzahlung",f1:"Unbegrenzte Transaktionen",f2:"Zahlungen in XRP und Fiatwährungen",f3:"Automatische Wechselkursumrechnung",f4:"Tägliche E-Mail-Zusammenfassung",f5:"Export nach CSV / Excel",f6:"Mehrere Geräte pro Lizenz",f7:"Kostenlose Updates",form_title:"Lizenz erwerben",form_subtitle:"Geben Sie Ihre E-Mail ein — wir senden Ihnen Zahlungsanweisungen mit einem eindeutigen Code.",email_label:"Ihre E-Mail",email_placeholder:"ihre@email.de",btn_text:"ZAHLUNGSANWEISUNGEN ERHALTEN",result_title:"Zahlungsanweisungen bereit",result_subtitle:"Details wurden an Ihre E-Mail gesendet",amount_label:"Betrag",address_label:"Adresse",memo_label:"Memo (ERFORDERLICH!)",copy_btn:"kopieren",copied_btn:"✓ kopiert",memo_warning:"muss genau eingegeben werden — sonst kann die Zahlung nicht Ihrer Lizenz zugeordnet werden!",how_title:"So funktioniert es",s1_num:"SCHRITT 01",s1_title:"E-Mail eingeben",s1_desc:"Füllen Sie das Formular aus und erhalten Sie eindeutige Zahlungsanweisungen.",s2_num:"SCHRITT 02",s2_title:"XRP senden",s2_desc:"Senden Sie 15 XRP an unsere Adresse mit dem Memo-Code aus der E-Mail.",s3_num:"SCHRITT 03",s3_title:"Lizenz aktiviert",s3_desc:"Innerhalb von Sekunden erhalten Sie eine E-Mail mit Ihrem Lizenzcode.",s4_num:"SCHRITT 04",s4_title:"Akzeptieren beginnen",s4_desc:"Geben Sie den Code in die POS-App ein und beginnen Sie sofort mit der Zahlungsannahme.",error_email:"Bitte gültige E-Mail-Adresse eingeben.",error_generic:"Verbindung fehlgeschlagen. Bitte erneut versuchen.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"🇩🇪 Deutsch"},sk:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},hu:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},pl:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},fr:{page_title:"XRPL POS — Obtenir une licence",hero_tag:"Licence unique",hero_h1_line1:"Acceptez les paiements XRP",hero_h1_line2:"partout et à tout moment",hero_p:"Terminal POS professionnel pour XRP Ledger. Pas d'abonnement, pas de frais de transaction — payez une fois, utilisez pour toujours.",price_label:"Prix de la licence",price_note:"paiement unique",f1:"Transactions illimitées",f2:"Paiements en XRP et devises fiat",f3:"Conversion automatique du taux de change",f4:"Résumé quotidien par email",f5:"Export vers CSV / Excel",f6:"Plusieurs appareils par licence",f7:"Mises à jour gratuites",form_title:"Obtenir une licence",form_subtitle:"Entrez votre email — nous vous enverrons les instructions de paiement avec un code unique.",email_label:"Votre email",email_placeholder:"votre@email.fr",btn_text:"OBTENIR LES INSTRUCTIONS DE PAIEMENT",result_title:"Instructions de paiement prêtes",result_subtitle:"Les détails ont été envoyés à votre email",amount_label:"Montant",address_label:"Adresse",memo_label:"Memo (OBLIGATOIRE!)",copy_btn:"copier",copied_btn:"✓ copié",memo_warning:"doit être saisi exactement — sinon le paiement ne peut pas être associé à votre licence!",how_title:"Comment ça marche",s1_num:"ÉTAPE 01",s1_title:"Entrez votre email",s1_desc:"Remplissez le formulaire et obtenez des instructions de paiement uniques.",s2_num:"ÉTAPE 02",s2_title:"Envoyez XRP",s2_desc:"Envoyez 15 XRP à notre adresse avec le code Memo de l'email.",s3_num:"ÉTAPE 03",s3_title:"Licence activée",s3_desc:"En quelques secondes vous recevrez un email avec votre code de licence.",s4_num:"ÉTAPE 04",s4_title:"Commencer à accepter",s4_desc:"Entrez le code dans l'app POS et commencez à accepter des paiements.",error_email:"Veuillez entrer une adresse email valide.",error_generic:"Connexion échouée. Veuillez réessayer.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Français"},es:{page_title:"XRPL POS — Obtener licencia",hero_tag:"Licencia única",hero_h1_line1:"Acepta pagos XRP",hero_h1_line2:"en cualquier lugar y momento",hero_p:"Terminal POS profesional para XRP Ledger. Sin suscripción, sin comisiones — paga una vez, úsalo para siempre.",price_label:"Precio de licencia",price_note:"pago único",f1:"Transacciones ilimitadas",f2:"Pagos en XRP y monedas fiat",f3:"Conversión automática de tipo de cambio",f4:"Resumen diario por email",f5:"Exportar a CSV / Excel",f6:"Múltiples dispositivos por licencia",f7:"Actualizaciones gratuitas",form_title:"Obtener licencia",form_subtitle:"Ingresa tu email — te enviaremos instrucciones de pago con un código único.",email_label:"Tu email",email_placeholder:"tu@email.com",btn_text:"OBTENER INSTRUCCIONES DE PAGO",result_title:"Instrucciones de pago listas",result_subtitle:"Los detalles fueron enviados a tu email",amount_label:"Monto",address_label:"Dirección",memo_label:"Memo (¡OBLIGATORIO!)",copy_btn:"copiar",copied_btn:"✓ copiado",memo_warning:"debe ingresarse exactamente — de lo contrario el pago no puede vincularse a tu licencia!",how_title:"Cómo funciona",s1_num:"PASO 01",s1_title:"Ingresa email",s1_desc:"Completa el formulario y obtén instrucciones de pago únicas.",s2_num:"PASO 02",s2_title:"Envía XRP",s2_desc:"Envía 15 XRP a nuestra dirección con el código Memo del email.",s3_num:"PASO 03",s3_title:"Licencia activada",s3_desc:"En segundos recibirás un email con tu código de licencia.",s4_num:"PASO 04",s4_title:"Comienza a aceptar",s4_desc:"Ingresa el código en la app POS y comienza a aceptar pagos.",error_email:"Ingresa una dirección de email válida.",error_generic:"Conexión fallida. Por favor intenta de nuevo.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Español"},it:{page_title:"XRPL POS — Ottieni licenza",hero_tag:"Licenza una tantum",hero_h1_line1:"Accetta pagamenti XRP",hero_h1_line2:"ovunque e in qualsiasi momento",hero_p:"Terminale POS professionale per XRP Ledger. Nessun abbonamento, nessuna commissione — paga una volta, usa per sempre.",price_label:"Prezzo licenza",price_note:"pagamento unico",f1:"Transazioni illimitate",f2:"Pagamenti in XRP e valute fiat",f3:"Conversione automatica del tasso di cambio",f4:"Riepilogo email giornaliero",f5:"Esporta in CSV / Excel",f6:"Più dispositivi per licenza",f7:"Aggiornamenti gratuiti",form_title:"Ottieni licenza",form_subtitle:"Inserisci la tua email — ti invieremo le istruzioni di pagamento con un codice univoco.",email_label:"La tua email",email_placeholder:"tua@email.it",btn_text:"OTTIENI ISTRUZIONI DI PAGAMENTO",result_title:"Istruzioni di pagamento pronte",result_subtitle:"I dettagli sono stati inviati alla tua email",amount_label:"Importo",address_label:"Indirizzo",memo_label:"Memo (OBBLIGATORIO!)",copy_btn:"copia",copied_btn:"✓ copiato",memo_warning:"deve essere inserito esattamente — altrimenti il pagamento non può essere associato alla tua licenza!",how_title:"Come funziona",s1_num:"PASSO 01",s1_title:"Inserisci email",s1_desc:"Compila il modulo e ottieni istruzioni di pagamento uniche.",s2_num:"PASSO 02",s2_title:"Invia XRP",s2_desc:"Invia 15 XRP al nostro indirizzo con il codice Memo dall'email.",s3_num:"PASSO 03",s3_title:"Licenza attivata",s3_desc:"In pochi secondi riceverai un'email con il tuo codice licenza.",s4_num:"PASSO 04",s4_title:"Inizia ad accettare",s4_desc:"Inserisci il codice nell'app POS e inizia ad accettare pagamenti.",error_email:"Inserisci un indirizzo email valido.",error_generic:"Connessione fallita. Riprova.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Italiano"},pt:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},ro:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},hr:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},sr:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},bg:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},uk:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},ru:{page_title:"XRPL POS — Получить лицензию",hero_tag:"Единовременная лицензия",hero_h1_line1:"Принимайте платежи XRP",hero_h1_line2:"везде и всегда",hero_p:"Профессиональный POS-терминал для XRP Ledger. Без подписки, без комиссий — заплатите один раз, используйте навсегда.",price_label:"Цена лицензии",price_note:"единовременный платёж",f1:"Неограниченное количество транзакций",f2:"Платежи в XRP и фиатных валютах",f3:"Автоматический пересчёт курса",f4:"Ежедневный отчёт по email",f5:"Экспорт в CSV / Excel",f6:"Несколько устройств на одну лицензию",f7:"Бесплатные обновления",form_title:"Получить лицензию",form_subtitle:"Введите ваш email — мы отправим инструкции по оплате с уникальным кодом.",email_label:"Ваш email",email_placeholder:"ваш@email.ru",btn_text:"ПОЛУЧИТЬ ИНСТРУКЦИИ ПО ОПЛАТЕ",result_title:"Инструкции по оплате готовы",result_subtitle:"Детали отправлены на ваш email",amount_label:"Сумма",address_label:"Адрес",memo_label:"Memo (ОБЯЗАТЕЛЬНО!)",copy_btn:"копировать",copied_btn:"✓ скопировано",memo_warning:"должно быть введено точно — иначе платёж не может быть сопоставлен с вашей лицензией!",how_title:"Как это работает",s1_num:"ШАГ 01",s1_title:"Введите email",s1_desc:"Заполните форму выше и получите уникальные инструкции по оплате.",s2_num:"ШАГ 02",s2_title:"Отправьте XRP",s2_desc:"Отправьте 15 XRP на наш адрес с кодом Memo из письма.",s3_num:"ШАГ 03",s3_title:"Лицензия активирована",s3_desc:"Через несколько секунд вы получите email с кодом лицензии.",s4_num:"ШАГ 04",s4_title:"Начните принимать",s4_desc:"Введите код в приложение POS и сразу начните принимать платежи.",error_email:"Введите действительный адрес email.",error_generic:"Соединение не удалось. Попробуйте ещё раз.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Русский"},tr:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},el:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},nl:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},sv:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},no:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},da:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},fi:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},et:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},lv:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},lt:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},sl:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},ar:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},he:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},fa:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},hi:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},bn:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},zh:{page_title:"XRPL POS — 获取许可证",hero_tag:"一次性许可证",hero_h1_line1:"接受XRP付款",hero_h1_line2:"随时随地",hero_p:"XRP Ledger专业POS终端。无订阅费，无交易手续费——一次付款，永久使用。",price_label:"许可证价格",price_note:"一次性付款",f1:"无限交易",f2:"支持XRP和法币支付",f3:"自动汇率转换",f4:"每日邮件摘要",f5:"导出CSV / Excel",f6:"一个许可证多设备",f7:"免费更新",form_title:"获取许可证",form_subtitle:"输入您的邮箱——我们将发送带有唯一识别码的付款说明。",email_label:"您的邮箱",email_placeholder:"your@email.com",btn_text:"获取付款说明",result_title:"付款说明已就绪",result_subtitle:"详情已发送至您的邮箱",amount_label:"金额",address_label:"地址",memo_label:"Memo（必填！）",copy_btn:"复制",copied_btn:"✓ 已复制",memo_warning:"必须准确输入——否则付款无法与您的许可证匹配！",how_title:"工作原理",s1_num:"步骤 01",s1_title:"输入邮箱",s1_desc:"填写上方表格，获取唯一付款说明。",s2_num:"步骤 02",s2_title:"发送XRP",s2_desc:"将15 XRP发送至我们的地址，附上邮件中的Memo代码。",s3_num:"步骤 03",s3_title:"许可证已激活",s3_desc:"几秒钟内您将收到含许可证代码的邮件。",s4_num:"步骤 04",s4_title:"开始接受",s4_desc:"在POS应用中输入代码，立即开始接受付款。",error_email:"请输入有效的邮箱地址。",error_generic:"连接失败，请重试。",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"中文"},ja:{page_title:"XRPL POS — ライセンスを取得",hero_tag:"一回限りのライセンス",hero_h1_line1:"XRP決済を受け付ける",hero_h1_line2:"いつでも、どこでも",hero_p:"XRP Ledger向けプロフェッショナルPOSターミナル。サブスクリプションなし、取引手数料なし — 一度支払えば永久に使用可能。",price_label:"ライセンス価格",price_note:"一回払い",f1:"無制限のトランザクション",f2:"XRPと法定通貨での支払い",f3:"為替レートの自動換算",f4:"毎日のメールサマリー",f5:"CSV / Excelへのエクスポート",f6:"1ライセンスで複数デバイス",f7:"無料アップデート",form_title:"ライセンスを取得",form_subtitle:"メールアドレスを入力してください — お支払い手順を固有コードと共にお送りします。",email_label:"メールアドレス",email_placeholder:"your@email.com",btn_text:"支払い手順を取得",result_title:"支払い手順の準備完了",result_subtitle:"詳細はメールに送信されました",amount_label:"金額",address_label:"アドレス",memo_label:"Memo（必須！）",copy_btn:"コピー",copied_btn:"✓ コピー済み",memo_warning:"正確に入力する必要があります — そうでないと支払いをライセンスに一致させることができません！",how_title:"使い方",s1_num:"ステップ 01",s1_title:"メールを入力",s1_desc:"フォームに記入して固有の支払い手順を取得します。",s2_num:"ステップ 02",s2_title:"XRPを送金",s2_desc:"メールのMemoコードと共に15 XRPをアドレスに送金します。",s3_num:"ステップ 03",s3_title:"ライセンス有効化",s3_desc:"数秒以内にライセンスコードを含むメールが届きます。",s4_num:"ステップ 04",s4_title:"受付開始",s4_desc:"POSアプリにコードを入力してすぐに支払いの受け付けを開始します。",error_email:"有効なメールアドレスを入力してください。",error_generic:"接続に失敗しました。もう一度お試しください。",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"日本語"},ko:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},th:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},vi:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},id:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},ms:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},tl:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},sw:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"},af:{page_title:"XRPL POS — Get License",hero_tag:"One-time license",hero_h1_line1:"Accept XRP payments",hero_h1_line2:"anywhere, anytime",hero_p:"Professional POS terminal for XRP Ledger. No subscription, no transaction fees — pay once, use forever.",price_label:"License price",price_note:"one-time payment",f1:"Unlimited transactions",f2:"Payments in XRP and fiat currencies",f3:"Automatic exchange rate conversion",f4:"Daily email summary",f5:"Export to CSV / Excel",f6:"Multiple devices per license",f7:"Free updates",form_title:"Get License",form_subtitle:"Enter your email — we'll send you payment instructions with a unique code to identify your payment.",email_label:"Your email",email_placeholder:"your@email.com",btn_text:"GET PAYMENT INSTRUCTIONS",result_title:"Payment instructions ready",result_subtitle:"Details have been sent to your email",amount_label:"Amount",address_label:"Address",memo_label:"Memo (REQUIRED!)",copy_btn:"copy",copied_btn:"✓ copied",memo_warning:"must be entered exactly — otherwise the payment cannot be matched to your license!",how_title:"How it works",s1_num:"STEP 01",s1_title:"Enter email",s1_desc:"Fill in the form above and get unique payment instructions.",s2_num:"STEP 02",s2_title:"Send XRP",s2_desc:"Send 15 XRP to our address with the Memo code from the email.",s3_num:"STEP 03",s3_title:"License activated",s3_desc:"Within seconds you'll receive an email with your license code.",s4_num:"STEP 04",s4_title:"Start accepting",s4_desc:"Enter the code in the POS app and start accepting payments immediately.",error_email:"Please enter a valid email address.",error_generic:"Connection failed. Please try again.",badge_mainnet:"● MAINNET",footer:"XRPL POS",name:"Afrikaans"}},i="1"===localStorage.getItem("xrpl_pos_lang_user_set"),l=(i?localStorage.getItem("xrpl_pos_lang"):null)||"cs";function tl(e){return t[l]&&t[l][e]||t.en&&t.en[e]||e}function applyLang(e,t){l=e,localStorage.setItem("xrpl_pos_lang",e),t&&localStorage.setItem("xrpl_pos_lang_user_set","1");t=document.getElementById("lang-select");t&&(t.value=e),document.title=tl("page_title");let i=e=>document.getElementById(e),n,a,o=(e,t)=>{e=i(e);e&&(e.textContent=tl(t))},s=(o("hero-tag","hero_tag"),o("hero-h1-line1","hero_h1_line1"),o("hero-h1-line2","hero_h1_line2"),o("hero-p","hero_p"),o("price-label","price_label"),o("price-note","price_note"),o("f1","f1"),o("f2","f2"),o("f3","f3"),o("f4","f4"),o("f5","f5"),o("f6","f6"),o("f7","f7"),o("form-title","form_title"),o("form-subtitle","form_subtitle"),o("email-label","email_label"),(n=i("email"))&&(n.placeholder=tl("email_placeholder")),o("btn-text","btn_text"),o("result-title","result_title"),o("result-subtitle","result_subtitle"),o("amount-label","amount_label"),o("address-label","address_label"),o("memo-label","memo_label"),o("how-title","how_title"),o("s1-num","s1_num"),o("s1-title","s1_title"),o("s1-desc","s1_desc"),o("s2-num","s2_num"),o("s2-title","s2_title"),o("s2-desc","s2_desc"),o("s3-num","s3_num"),o("s3-title","s3_title"),o("s3-desc","s3_desc"),o("s4-num","s4_num"),o("s4-title","s4_title"),o("s4-desc","s4_desc"),document.getElementById("memo-warning-text"));s&&(a=document.getElementById("res-memo")?.textContent||"",s.innerHTML="<strong>"+a+"</strong> "+tl("memo_warning")),document.documentElement.lang=e}document.addEventListener("DOMContentLoaded",()=>{var e="1"===localStorage.getItem("xrpl_pos_lang_user_set"),t=localStorage.getItem("xrpl_pos_lang"),t=e&&t?t:"cs";e||localStorage.removeItem("xrpl_pos_lang"),applyLang(t)});
+</script>
+</body>
+</html>
