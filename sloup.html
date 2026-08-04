@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teleskopický sloup s tryskou — animace vysouvání</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B2331;
+    --bg-panel:#0F2E40;
+    --bg-panel-2:#123648;
+    --grid-line:rgba(107,181,201,0.10);
+    --pipe:#4FD1E8;
+    --pipe-dim:#2C7C8F;
+    --steel:#9FB4C2;
+    --steel-dim:#5C7684;
+    --water:#7FE0B8;
+    --warn:#E8654F;
+    --text:#EAF3F5;
+    --text-muted:#7FA0B0;
+    --border:rgba(143,180,194,0.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/32px 32px,
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0/32px 32px,
+      var(--bg);
+    color:var(--text); font-family:'Inter', sans-serif; min-height:100vh;
+  }
+  .page{max-width:1100px;margin:0 auto;padding:28px 24px 48px;}
+  header{margin-bottom:20px;}
+  .eyebrow{font-family:'IBM Plex Mono', monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--pipe);display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .eyebrow::before{content:"";width:18px;height:1px;background:var(--pipe);display:inline-block;}
+  h1{font-family:'Space Grotesk', sans-serif;font-size:clamp(24px,3.5vw,32px);font-weight:700;margin:0 0 6px;letter-spacing:-0.01em;}
+  header p{color:var(--text-muted);max-width:720px;line-height:1.55;margin:0;font-size:13.5px;}
+
+  .layout{display:grid;grid-template-columns:1.3fr 0.9fr;gap:18px;align-items:start;}
+  @media (max-width:820px){.layout{grid-template-columns:1fr;}}
+
+  .card{background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:18px 20px 20px;}
+  .card + .card{margin-top:14px;}
+  .card h2{font-family:'Space Grotesk', sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin:0 0 4px;}
+  .card-sub{color:var(--text-muted);font-size:11.5px;margin:0 0 12px;line-height:1.5;}
+
+  svg#mast{width:100%;height:auto;display:block;background:var(--bg-panel-2);border-radius:8px;border:1px solid var(--border);}
+
+  .controls{display:flex;flex-direction:column;gap:14px;margin-top:14px;}
+  .field-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .field-label{font-size:12.5px;color:var(--text);font-weight:500;}
+  .field-value{font-family:'IBM Plex Mono', monospace;font-size:12.5px;color:var(--pipe);background:rgba(79,209,232,0.08);border:1px solid rgba(79,209,232,0.25);border-radius:5px;padding:2px 8px;}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border);outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--pipe);border:2px solid var(--bg-panel);box-shadow:0 0 0 1px var(--pipe);cursor:pointer;}
+  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--pipe);border:2px solid var(--bg-panel);cursor:pointer;}
+
+  .btn-row{display:flex;gap:8px;}
+  .btn{font-family:'IBM Plex Mono', monospace;font-size:11.5px;background:var(--bg-panel-2);border:1px solid var(--border);color:var(--text-muted);padding:8px 14px;border-radius:6px;cursor:pointer;transition:all .12s ease;}
+  .btn:hover{color:var(--text);border-color:var(--pipe);}
+  .btn.active{color:var(--bg);background:var(--pipe);border-color:var(--pipe);}
+
+  .results-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px;}
+  .result{background:var(--bg-panel-2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;}
+  .result.hero{grid-column:1/-1;background:linear-gradient(135deg, rgba(127,224,184,0.08), rgba(79,209,232,0.05));border-color:rgba(127,224,184,0.35);}
+  .result-label{font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;}
+  .result-value{font-family:'IBM Plex Mono', monospace;font-size:18px;font-weight:600;color:var(--water);}
+  .result.hero .result-value{font-size:32px;}
+  .result-value small{font-size:12px;font-weight:400;color:var(--text-muted);margin-left:4px;}
+
+  .stage-list{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
+  .stage-row{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);}
+  .stage-bar{flex:1;height:8px;border-radius:4px;background:var(--bg-panel-2);border:1px solid var(--border);overflow:hidden;}
+  .stage-fill{height:100%;background:var(--pipe);transition:width .05s linear;}
+  .stage-row .stage-name{width:78px;flex:none;color:var(--text);}
+  .stage-row .stage-num{width:52px;flex:none;text-align:right;}
+
+  .assumptions{font-size:11.5px;color:var(--text-muted);line-height:1.7;}
+  .assumptions strong{color:var(--text);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="eyebrow">Doplněk k projektu · teleskopický stožár trysky</div>
+    <h1>Teleskopický sloup s tryskou</h1>
+    <p>Čtyřdílný teleskopický sloup na kovové čtyřnožce (rozpon noh 1,5 m), napojený přírubou a 90° obloukem na přívodní potrubí. Díly (každý 4 m) se vysouvají postupně, každý o 3 m, s 1 m překrytím pro vedení. Hlavice na vrcholu je zaslepená, s malými otvory po obvodu pod úhlem 45°.</p>
+  </header>
+
+  <div class="layout">
+
+    <div class="card">
+      <h2>Animace vysouvání</h2>
+      <p class="card-sub">Táhněte "tlak" nebo spusťte automatickou animaci. Díly se vysouvají postupně (nejdřív díl 2, pak 3, pak 4) — tak jak to reálně dělá teleskopický hydraulický válec.</p>
+      <svg id="mast" viewBox="0 0 520 560" xmlns="http://www.w3.org/2000/svg"></svg>
+
+      <div class="controls">
+        <div>
+          <div class="field-head"><span class="field-label">Tlak (pohání vysunutí)</span><span class="field-value" id="v_pressure">0 %</span></div>
+          <input type="range" id="pressure" min="0" max="100" step="1" value="0">
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="playBtn">▶ Spustit animaci (nahoru/dolů)</button>
+          <button class="btn" id="resetBtn">↺ Zasunout</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Stav sloupu</h2>
+        <div class="results-grid">
+          <div class="result hero" style="grid-column:1/-1;">
+            <div class="result-label">Celková výška od paty</div>
+            <div class="result-value" id="rHeight">4,0 <small>m</small></div>
+          </div>
+          <div class="result"><div class="result-label">Zasunuto</div><div class="result-value" id="rMin">4,0 <small>m</small></div></div>
+          <div class="result"><div class="result-label">Plně vysunuto</div><div class="result-value" id="rMax">13,0 <small>m</small></div></div>
+        </div>
+        <div class="stage-list">
+          <div class="stage-row"><span class="stage-name">Díl 1 (pevný)</span><div class="stage-bar"><div class="stage-fill" style="width:100%;background:var(--steel-dim);"></div></div><span class="stage-num">4,0 m</span></div>
+          <div class="stage-row"><span class="stage-name">Díl 2</span><div class="stage-bar"><div class="stage-fill" id="fill2" style="width:0%;"></div></div><span class="stage-num" id="num2">0,0 m</span></div>
+          <div class="stage-row"><span class="stage-name">Díl 3</span><div class="stage-bar"><div class="stage-fill" id="fill3" style="width:0%;"></div></div><span class="stage-num" id="num3">0,0 m</span></div>
+          <div class="stage-row"><span class="stage-name">Díl 4 (tryska)</span><div class="stage-bar"><div class="stage-fill" id="fill4" style="width:0%;"></div></div><span class="stage-num" id="num4">0,0 m</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Konstrukce</h2>
+        <p class="assumptions">
+          <strong>Díly:</strong> 4× ocelová trubka, každá 4 m dlouhá, zasunuté do sebe (klasické teleskopické uspořádání, díl 1 nejširší dole, díl 4 nejužší nahoře).
+          <strong>Zdvih:</strong> každý pohyblivý díl (2, 3, 4) se vysune o 3 m, s 1 m překrytím se sousedním dílem pro vedení a těsnění — celkový zdvih 9 m, výška 4 m (zasunuto) až 13 m (vysunuto).
+          <strong>Pořadí vysouvání:</strong> postupné (teleskopické) — díl 2 se vysune jako první, po jeho plném vysunutí začne díl 3, pak díl 4. Odpovídá běžnému chování teleskopických hydraulických válců (klesající plocha pístu s každým dalším dílem).
+          <strong>Hlavice (díl 4):</strong> vrchol zaslepený, po obvodu malé otvory pod úhlem 45° — sloup tedy nestříká jeden svislý proud, ale kruhovou "korunu" paprsků směrem šikmo vzhůru a do stran.
+          <strong>Základna:</strong> kovová čtyřnožka, rozpon noh 1,5 m, díl 1 je v ní pevně uchycen. 90° koleno z vodorovného přívodního potrubí je zaústěno do příruby přímo na patě sloupu (ne do strany) — tlak vody tak působí svisle vzhůru přímo proti druhému dílu, který se díky tomu vysouvá jako první.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const STEPS = {seg2:{lo:0,hi:33.34}, seg3:{lo:33.34,hi:66.67}, seg4:{lo:66.67,hi:100}};
+function extensionFor(pressure, stage){
+  const t = (pressure - stage.lo) / (stage.hi - stage.lo);
+  return Math.min(Math.max(t,0),1) * 3;
+}
+function fmt(n){ return n.toLocaleString('cs-CZ',{minimumFractionDigits:1,maximumFractionDigits:1}); }
+
+function computeState(pressure){
+  const ext2 = extensionFor(pressure, STEPS.seg2);
+  const ext3 = extensionFor(pressure, STEPS.seg3);
+  const ext4 = extensionFor(pressure, STEPS.seg4);
+  const top1 = 4;
+  const top2 = top1 + ext2;
+  const top3 = top2 + ext3;
+  const top4 = top3 + ext4;
+  return {ext2, ext3, ext4, top1, top2, top3, top4, totalHeight: top4};
+}
+
+function drawMast(state, pressure){
+  const svg = document.getElementById('mast');
+  const W=520, H=560;
+  const padB = 60, padT = 30;
+  const drawH = H - padB - padT;
+  const scale = drawH / 15; // fit up to 15m
+  const groundY = H - padB;
+  const cx = 300; // column centerline x
+
+  const yAt = m => groundY - m*scale;
+
+  let s = '';
+
+  // ground
+  s += '<line x1="20" y1="'+groundY+'" x2="500" y2="'+groundY+'" stroke="var(--border)" stroke-width="1.5"/>';
+  for(let gx=20; gx<500; gx+=16){
+    s += '<line x1="'+gx+'" y1="'+groundY+'" x2="'+(gx-8)+'" y2="'+(groundY+9)+'" stroke="var(--border)" stroke-width="1"/>';
+  }
+
+  // supply pipe + 90° elbow + flange — elbow lands centered on the mast axis,
+  // flange sits right at the base of segment 1, so pressure pushes straight
+  // up the column into segment 2 (the first part that telescopes out).
+  const pipeY = groundY - 14;
+  s += '<line x1="30" y1="'+pipeY+'" x2="'+(cx-34)+'" y2="'+pipeY+'" stroke="var(--pipe)" stroke-width="10" stroke-linecap="round" opacity="0.9"/>';
+  // small support flange on the horizontal run
+  s += '<rect x="24" y="'+(pipeY-9)+'" width="6" height="18" fill="var(--steel)"/>';
+  // 90° elbow, rising to meet the column centerline exactly
+  s += '<path d="M '+(cx-34)+' '+pipeY+' Q '+cx+' '+pipeY+' '+cx+' '+(pipeY-30)+'" fill="none" stroke="var(--pipe)" stroke-width="10" stroke-linecap="round" opacity="0.9"/>';
+  // base flange — bolted connection right under segment 1
+  s += '<rect x="'+(cx-16)+'" y="'+(groundY-6)+'" width="32" height="8" rx="1.5" fill="var(--steel)" stroke="var(--bg)" stroke-width="1"/>';
+  [-11,-4,4,11].forEach(dx=>{ s += '<circle cx="'+(cx+dx)+'" cy="'+(groundY-2)+'" r="1.4" fill="var(--bg)"/>'; });
+
+  // quadpod base — front two legs visible in side view, plus small plan-view inset
+  const legSpanPx = 1.5*scale; // 1.5 m footprint half-shown
+  s += '<line x1="'+(cx-legSpanPx*0.55)+'" y1="'+groundY+'" x2="'+(cx-8)+'" y2="'+(groundY-38)+'" stroke="var(--steel)" stroke-width="6" stroke-linecap="round"/>';
+  s += '<line x1="'+(cx+legSpanPx*0.55)+'" y1="'+groundY+'" x2="'+(cx+8)+'" y2="'+(groundY-38)+'" stroke="var(--steel)" stroke-width="6" stroke-linecap="round"/>';
+  s += '<line x1="'+(cx-legSpanPx*0.55)+'" y1="'+groundY+'" x2="'+(cx-legSpanPx*0.55-16)+'" y2="'+(groundY-8)+'" stroke="var(--steel)" stroke-width="4" stroke-linecap="round" opacity="0.6"/>';
+  s += '<line x1="'+(cx+legSpanPx*0.55)+'" y1="'+groundY+'" x2="'+(cx+legSpanPx*0.55+16)+'" y2="'+(groundY-8)+'" stroke="var(--steel)" stroke-width="4" stroke-linecap="round" opacity="0.6"/>';
+  s += '<rect x="'+(cx-22)+'" y="'+(groundY-42)+'" width="44" height="14" rx="3" fill="var(--steel-dim)"/>';
+
+  // pressure-direction arrow: water from the flange pushes straight up into segment 2
+  const arrowTopY = yAt(2.2), arrowBotY = yAt(0.6);
+  const pushColor = pressure>0.5 ? 'var(--water)' : 'var(--text-muted)';
+  s += '<line x1="'+cx+'" y1="'+arrowBotY+'" x2="'+cx+'" y2="'+arrowTopY+'" stroke="'+pushColor+'" stroke-width="2" stroke-dasharray="3 3" opacity="0.85"/>';
+  s += '<path d="M '+(cx-4)+' '+(arrowTopY+6)+' L '+cx+' '+arrowTopY+' L '+(cx+4)+' '+(arrowTopY+6)+'" fill="none" stroke="'+pushColor+'" stroke-width="2" opacity="0.85"/>';
+  s += '<text x="'+(cx-30)+'" y="'+(arrowBotY-4)+'" fill="'+pushColor+'" font-size="8.5" font-family=\'IBM Plex Mono, monospace\'>tlak → 2. díl</text>';
+
+
+  // plan-view inset (top-down footprint) — top-right corner
+  const ivX=430, ivY=40, ivR=42;
+  s += '<rect x="'+(ivX-ivR-8)+'" y="'+(ivY-ivR-18)+'" width="'+(2*ivR+16)+'" height="'+(2*ivR+34)+'" rx="6" fill="var(--bg-panel)" stroke="var(--border)"/>';
+  s += '<text x="'+ivX+'" y="'+(ivY-ivR-4)+'" fill="var(--text-muted)" font-size="9" text-anchor="middle" font-family=\'IBM Plex Mono, monospace\'>půdorys základny</text>';
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sy])=>{
+    s += '<circle cx="'+(ivX+sx*ivR*0.75)+'" cy="'+(ivY+sy*ivR*0.75)+'" r="4" fill="var(--steel)"/>';
+    s += '<line x1="'+ivX+'" y1="'+ivY+'" x2="'+(ivX+sx*ivR*0.75)+'" y2="'+(ivY+sy*ivR*0.75)+'" stroke="var(--steel)" stroke-width="2" opacity="0.6"/>';
+  });
+  s += '<circle cx="'+ivX+'" cy="'+ivY+'" r="5" fill="var(--pipe)"/>';
+  s += '<text x="'+ivX+'" y="'+(ivY+ivR+18)+'" fill="var(--text-muted)" font-size="9" text-anchor="middle" font-family=\'IBM Plex Mono, monospace\'>1,5 × 1,5 m</text>';
+
+  // --- telescoping segments (bottom fixed, then 3 moving) ---
+  const widths = [26,21,16,11]; // seg1..seg4, tapering
+  const bottoms = [0, state.top1-4, state.top2-4, state.top3-4];
+  const tops    = [state.top1, state.top2, state.top3, state.top4];
+  const colors  = ['var(--steel)','var(--steel)','var(--pipe-dim)','var(--pipe)'];
+
+  for(let i=0;i<4;i++){
+    const w = widths[i];
+    const yTop = yAt(tops[i]);
+    const yBot = yAt(bottoms[i]);
+    s += '<rect x="'+(cx-w/2)+'" y="'+yTop+'" width="'+w+'" height="'+(yBot-yTop)+'" rx="2" fill="'+colors[i]+'" opacity="0.92" stroke="var(--bg)" stroke-width="1"/>';
+  }
+
+  // nozzle head cap on top of segment 4
+  const headTopY = yAt(state.top4);
+  const headW = widths[3];
+  s += '<rect x="'+(cx-headW/2-2)+'" y="'+(headTopY-8)+'" width="'+(headW+4)+'" height="10" rx="3" fill="var(--steel)" stroke="var(--bg)" stroke-width="1"/>';
+
+  // 45-degree angled ports around the head, both sides + spray dashes when pressurized
+  const portY = headTopY - 3;
+  [-1,1].forEach(side=>{
+    for(let k=0;k<3;k++){
+      const py = portY + k*7;
+      const x0 = cx + side*(headW/2+2);
+      const x1 = x0 + side*10;
+      const y1 = py - 10;
+      s += '<line x1="'+x0+'" y1="'+py+'" x2="'+x1+'" y2="'+y1+'" stroke="var(--water)" stroke-width="2" stroke-linecap="round" opacity="'+(pressure>66.67?0.95:0.35)+'"/>';
+      if(pressure>66.67){
+        s += '<line x1="'+x1+'" y1="'+y1+'" x2="'+(x1+side*14)+'" y2="'+(y1-14)+'" stroke="var(--water)" stroke-width="1.4" stroke-dasharray="2 4" opacity="0.6"/>';
+      }
+    }
+  });
+
+  // height label
+  s += '<text x="'+(cx+headW/2+30)+'" y="'+(headTopY+4)+'" fill="var(--water)" font-size="13" font-weight="600" font-family=\'IBM Plex Mono, monospace\'>'+fmt(state.totalHeight)+' m</text>';
+  s += '<line x1="'+(cx+headW/2+8)+'" y1="'+headTopY+'" x2="'+(cx+headW/2+26)+'" y2="'+headTopY+'" stroke="var(--water)" stroke-width="1"/>';
+
+  svg.innerHTML = s;
+}
+
+function render(){
+  const pressure = parseFloat(document.getElementById('pressure').value);
+  document.getElementById('v_pressure').textContent = pressure+' %';
+  const state = computeState(pressure);
+
+  document.getElementById('rHeight').innerHTML = fmt(state.totalHeight)+' <small>m</small>';
+  document.getElementById('fill2').style.width = (state.ext2/3*100)+'%';
+  document.getElementById('fill3').style.width = (state.ext3/3*100)+'%';
+  document.getElementById('fill4').style.width = (state.ext4/3*100)+'%';
+  document.getElementById('num2').textContent = fmt(state.ext2)+' m';
+  document.getElementById('num3').textContent = fmt(state.ext3)+' m';
+  document.getElementById('num4').textContent = fmt(state.ext4)+' m';
+
+  drawMast(state, pressure);
+}
+
+document.getElementById('pressure').addEventListener('input', render);
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  document.getElementById('pressure').value = 0;
+  render();
+});
+
+let playing = false, playDir = 1, playTimer = null;
+document.getElementById('playBtn').addEventListener('click', (e)=>{
+  playing = !playing;
+  const btn = e.currentTarget;
+  if(playing){
+    btn.textContent = '⏸ Zastavit animaci';
+    btn.classList.add('active');
+    playTimer = setInterval(()=>{
+      const slider = document.getElementById('pressure');
+      let v = parseFloat(slider.value) + playDir*1.2;
+      if(v>=100){ v=100; playDir=-1; }
+      if(v<=0){ v=0; playDir=1; }
+      slider.value = v;
+      render();
+    }, 30);
+  } else {
+    btn.textContent = '▶ Spustit animaci (nahoru/dolů)';
+    btn.classList.remove('active');
+    clearInterval(playTimer);
+  }
+});
+
+render();
+</script>
+</body>
+</html>
