@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hydraulický model — návrh vodní trysky</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B2331;
+    --bg-panel:#0F2E40;
+    --bg-panel-2:#123648;
+    --grid-line:rgba(107,181,201,0.10);
+    --pipe:#4FD1E8;
+    --pipe-dim:#2C7C8F;
+    --water:#7FE0B8;
+    --natural:#F2B84B;
+    --terrain:#C99A6A;
+    --ice:#CFEFFF;
+    --ice2:#8FD0E8;
+    --warn:#E8654F;
+    --text:#EAF3F5;
+    --text-muted:#7FA0B0;
+    --border:rgba(143,180,194,0.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/32px 32px,
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0/32px 32px,
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+  }
+  .page{max-width:1900px;margin:0 auto;padding:20px 22px 40px;}
+
+  header{margin-bottom:16px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--pipe);
+    display:flex;align-items:center;gap:10px;margin-bottom:6px;
+  }
+  .eyebrow::before{content:"";width:18px;height:1px;background:var(--pipe);display:inline-block;}
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:clamp(22px,3vw,30px);
+    font-weight:700;margin:0 0 4px;letter-spacing:-0.01em;
+  }
+  header p{color:var(--text-muted);max-width:900px;line-height:1.45;margin:0;font-size:12.5px;}
+
+  .dashboard{display:grid;grid-template-columns:1.15fr 0.95fr 0.95fr;gap:14px;align-items:start;}
+  @media (max-width:1300px){.dashboard{grid-template-columns:1fr 1fr;}}
+  @media (max-width:820px){.dashboard{grid-template-columns:1fr;}}
+
+  .card{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:9px;
+    padding:14px 16px 16px;
+  }
+  .card + .card{margin-top:12px;}
+  .card.dragging{opacity:0.35;}
+  .card.drag-over{outline:2px dashed var(--pipe);outline-offset:-2px;}
+  .card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:3px;}
+  .card-header h2{margin:0;}
+  .drag-handle{
+    cursor:grab;user-select:none;flex:none;
+    color:var(--text-muted);font-size:15px;line-height:1;
+    padding:2px 5px;border-radius:5px;border:1px solid transparent;
+  }
+  .drag-handle:hover{color:var(--text);background:var(--bg-panel-2);border-color:var(--border);}
+  .drag-handle:active{cursor:grabbing;}
+
+  .card h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:12.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;
+    color:var(--text);margin:0 0 3px;
+  }
+  .card .card-sub{color:var(--text-muted);font-size:11.5px;margin:0 0 10px;line-height:1.45;}
+  .card.natural h2{color:var(--natural);}
+  .card.ice h2{color:var(--ice);}
+
+  #diagram-wrap{position:relative;}
+  svg#diagram{width:100%;height:auto;display:block;background:var(--bg-panel-2);border-radius:8px;border:1px solid var(--border);touch-action:none;}
+  .node-handle{cursor:ns-resize;}
+  .node-handle.free2d{cursor:move;}
+  .node-handle.fixed{cursor:default;}
+
+  .warn-banner{
+    display:none;align-items:center;gap:9px;
+    background:rgba(232,101,79,0.12);
+    border:1px solid rgba(232,101,79,0.4);
+    color:var(--warn);font-size:12px;font-weight:500;
+    padding:8px 12px;border-radius:7px;margin-top:10px;
+  }
+  .warn-banner.show{display:flex;}
+  .warn-dot{width:7px;height:7px;border-radius:50%;background:var(--warn);flex:none;margin-top:2px;}
+
+  .diagram-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  .btn{
+    font-family:'IBM Plex Mono', monospace;font-size:10.5px;
+    background:var(--bg-panel-2);border:1px solid var(--border);color:var(--text-muted);
+    padding:6px 10px;border-radius:6px;cursor:pointer;transition:all .12s ease;
+  }
+  .btn:hover{color:var(--text);border-color:var(--pipe);}
+
+  .results-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px;}
+  .result{background:var(--bg-panel-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+  .result.hero{grid-column:1/-1;padding:14px 14px;background:linear-gradient(135deg, rgba(127,224,184,0.08), rgba(79,209,232,0.05));border-color:rgba(127,224,184,0.35);}
+  .result.ice-hero{grid-column:1/-1;padding:14px 14px;background:linear-gradient(135deg, rgba(207,239,255,0.10), rgba(79,209,232,0.03));border-color:rgba(207,239,255,0.35);}
+  .result-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;}
+  .result-value{font-family:'IBM Plex Mono', monospace;font-size:17px;font-weight:600;color:var(--water);}
+  .result.hero .result-value{font-size:30px;color:var(--water);line-height:1;}
+  .result.ice-hero .result-value{font-size:24px;color:var(--ice);line-height:1;}
+  .result-value small{font-size:11.5px;font-weight:400;color:var(--text-muted);margin-left:4px;}
+  .result-value.pipe-color{color:var(--pipe);}
+  .result-note{font-size:10.5px;color:var(--text-muted);margin-top:5px;line-height:1.4;}
+
+  .energy-bar{margin-top:5px;height:22px;border-radius:6px;overflow:hidden;display:flex;border:1px solid var(--border);}
+  .energy-seg{height:100%;transition:width .15s ease;}
+  .energy-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:10.5px;color:var(--text-muted);}
+  .energy-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .swatch{width:8px;height:8px;border-radius:2px;display:inline-block;}
+
+  .field{margin-bottom:12px;}
+  .field:last-child{margin-bottom:0;}
+  .field-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;gap:8px;}
+  .field-label{font-size:12px;color:var(--text);font-weight:500;}
+  .field-hint{font-size:10px;color:var(--text-muted);margin-top:2px;}
+  .field-value{
+    font-family:'IBM Plex Mono', monospace;font-size:12px;color:var(--pipe);
+    background:rgba(79,209,232,0.08);border:1px solid rgba(79,209,232,0.25);
+    border-radius:5px;padding:2px 7px;min-width:58px;text-align:right;
+  }
+  .natural .field-value{color:var(--natural);background:rgba(242,184,75,0.08);border-color:rgba(242,184,75,0.3);}
+
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border);outline:none;margin:3px 0;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:15px;height:15px;border-radius:50%;background:var(--pipe);border:2px solid var(--bg-panel);box-shadow:0 0 0 1px var(--pipe);cursor:pointer;}
+  .natural input[type=range]::-webkit-slider-thumb{background:var(--natural);box-shadow:0 0 0 1px var(--natural);}
+  input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--pipe);border:2px solid var(--bg-panel);cursor:pointer;}
+  .natural input[type=range]::-moz-range-thumb{background:var(--natural);}
+
+  .divider{border:none;border-top:1px solid var(--border);margin:14px 0;}
+  .future-note{font-size:11px;color:var(--text-muted);border-left:2px solid var(--natural);padding:7px 10px;margin-top:12px;background:rgba(242,184,75,0.05);border-radius:0 6px 6px 0;line-height:1.45;}
+
+  footer{margin-top:14px;}
+  .assumptions{font-size:11px;color:var(--text-muted);line-height:1.65;}
+  .assumptions strong{color:var(--text);font-weight:600;}
+  footer > .card{padding:10px 16px;}
+  footer summary{cursor:pointer;font-family:'Space Grotesk', sans-serif;font-size:12.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);padding:4px 0;}
+
+  .breakdown{margin-top:10px;display:flex;flex-direction:column;gap:5px;}
+  .breakdown-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;}
+  .breakdown-row span:last-child{color:var(--text);}
+
+  details.profile-table{margin-top:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  details.profile-table summary{
+    padding:7px 10px;font-size:11px;color:var(--text-muted);cursor:pointer;
+    background:var(--bg-panel-2);font-family:'IBM Plex Mono',monospace;
+  }
+  .table-scroll{max-height:130px;overflow-y:auto;}
+  table.seg-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:10.5px;}
+  table.seg-table th,table.seg-table td{padding:4px 10px;text-align:right;border-top:1px solid var(--border);color:var(--text-muted);}
+  table.seg-table th:first-child,table.seg-table td:first-child{text-align:left;color:var(--text);}
+  table.seg-table td.angle-down{color:var(--water);}
+  table.seg-table td.angle-up{color:var(--warn);}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="eyebrow">Hydraulický model · verze 3</div>
+    <h1>Návrh vodní trysky</h1>
+    <p>Interaktivní model spádového potrubí z horské bystřiny. Tažením bodů v diagramu tvarujte profil potrubí, svahu i ledového kužele (V–A–B–S1–S2) — vše se přepočítává živě do tlaku, výšky výstřiku i objemu ledu.</p>
+  </header>
+
+  <div class="dashboard">
+
+    <section class="col col-1">
+      <div class="card">
+        <div class="card-header"><h2>Profil systému</h2><span class="drag-handle" draggable="true" title="Přetáhněte pro přeskládání karet">⠿</span></div>
+        <p class="card-sub">Modrý bod = profil potrubí (0–<span id="lblL1">100</span> m, po 10 m). Hnědý = svah (0–50 m, po 10 m). Bílé/tečkované = ledový kužel: V (vrchol, pevný) – A/B (patky, lze i vodorovně) – S1/S2 (řídicí body zakřivení).</p>
+        <div id="diagram-wrap">
+          <svg id="diagram" viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <div class="warn-banner" id="warnBanner"><span class="warn-dot"></span><span id="warnText"></span></div>
+        <div class="diagram-actions">
+          <button class="btn" id="resetPipe">↺ Profil potrubí</button>
+          <button class="btn" id="resetTerrain">↺ Profil svahu</button>
+          <button class="btn" id="resetIce">↺ Tvar kužele</button>
+        </div>
+        <details class="profile-table">
+          <summary>Segmenty hlavního potrubí (sklon po 10 m)</summary>
+          <div class="table-scroll"><table class="seg-table" id="pipeSegTable">
+            <thead><tr><th>úsek</th><th>x (m)</th><th>výška (m)</th><th>sklon (°)</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </details>
+        <details class="profile-table">
+          <summary>Segmenty svahu kolem stoupačky (po 10 m)</summary>
+          <div class="table-scroll"><table class="seg-table" id="terrainSegTable">
+            <thead><tr><th>úsek</th><th>x (m)</th><th>výška (m)</th><th>sklon (°)</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </details>
+      </div>
+    </section>
+
+    <section class="col col-2">
+      <div class="card">
+        <div class="card-header"><h2>Výsledky</h2><span class="drag-handle" draggable="true" title="Přetáhněte pro přeskládání karet">⠿</span></div>
+        <p class="card-sub">Průtok a tlak na trysce jsou důsledkem geometrie a spádu — model je počítá, nejde o volné vstupy.</p>
+        <div class="results-grid">
+          <div class="result hero" style="grid-column:1/-1;">
+            <div class="result-label">Výška výstřiku od země</div>
+            <div class="result-value" id="rHeightTotal">— <small>m</small></div>
+          </div>
+          <div class="result"><div class="result-label">Rychlost na trysce</div><div class="result-value pipe-color" id="rVelocity">— <small>m/s</small></div></div>
+          <div class="result"><div class="result-label">Průtok</div><div class="result-value pipe-color" id="rFlow">— <small>l/s</small></div></div>
+          <div class="result"><div class="result-label">Tlak na ústí trysky</div><div class="result-value" id="rPressureTip">0 <small>Pa (atmosférický)</small></div></div>
+          <div class="result"><div class="result-label">Tlak v potrubí před tryskou</div><div class="result-value" id="rPressureBefore">— <small>bar</small></div></div>
+          <div class="result"><div class="result-label">Odtok vody / den (mimo led. dny)</div><div class="result-value" id="rVolDay">— <small>m³</small></div></div>
+          <div class="result"><div class="result-label">Odtok vody / rok</div><div class="result-value" id="rVolYear">— <small>m³</small></div></div>
+          <div class="result" style="grid-column:1/-1;">
+            <div class="result-label">Bilance výškové energie zdroje</div>
+            <div class="energy-bar" id="energyBar"></div>
+            <div class="energy-legend">
+              <span><i class="swatch" style="background:var(--pipe-dim)"></i>výška stoupačky</span>
+              <span><i class="swatch" style="background:var(--warn)"></i>ztráty</span>
+              <span><i class="swatch" style="background:var(--water)"></i>výstřik</span>
+            </div>
+            <div class="breakdown" id="lossBreakdown"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card natural">
+        <div class="card-header"><h2>Přírodní podmínky</h2><span class="drag-handle" draggable="true" title="Přetáhněte pro přeskládání karet">⠿</span></div>
+        <p class="card-sub">Zdroj: horská bystřina.</p>
+        <div class="field">
+          <div class="field-head"><span class="field-label">Počet ledových / mrazivých dnů v roce</span><span class="field-value" id="v_iceDays">60 dní</span></div>
+          <input type="range" id="iceDays" min="0" max="200" step="1" value="60">
+          <div class="field-hint" id="hint_operatingDays">Provozních (nemrznoucích) dní: 305</div>
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-label">Účinnost namrzání spreje</span><span class="field-value" id="v_freezeEff">70 %</span></div>
+          <input type="range" id="freezeEffPct" min="10" max="100" step="5" value="70">
+          <div class="field-hint">Podíl vystříkané vody, která skutečně přimrzne — zbytek odletí, odteče nebo sublimuje.</div>
+        </div>
+        <div class="future-note">Další přírodní parametry (sezónní kolísání průtoku bystřiny, minimální zůstatkový průtok, teplota) přidáme postupně.</div>
+      </div>
+    </section>
+
+    <section class="col col-3">
+      <div class="card">
+        <div class="card-header"><h2>Technický profil</h2><span class="drag-handle" draggable="true" title="Přetáhněte pro přeskládání karet">⠿</span></div>
+        <p class="card-sub">Rozměry potrubí. Sklon spádu i svahu se modeluje v diagramu vlevo, tažením bodů.</p>
+        <div class="field">
+          <div class="field-head"><span class="field-label">Délka hlavního potrubí</span><span class="field-value" id="v_L1">100 m</span></div>
+          <input type="range" id="L1" min="10" max="120" step="10" value="100">
+          <div class="field-hint">Změna délky obnoví ruční úpravy profilu potrubí.</div>
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-label">Průměr hlavního potrubí</span><span class="field-value" id="v_D1">250 mm</span></div>
+          <input type="range" id="D1mm" min="50" max="600" step="5" value="250">
+        </div>
+        <hr class="divider">
+        <div class="field">
+          <div class="field-head"><span class="field-label">Vertikální výška ke trysce</span><span class="field-value" id="v_H2">10 m</span></div>
+          <input type="range" id="H2" min="0" max="60" step="0.5" value="10">
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-label">Průměr vertikálního úseku</span><span class="field-value" id="v_D2">100 mm</span></div>
+          <input type="range" id="D2mm" min="20" max="600" step="5" value="100">
+        </div>
+        <hr class="divider">
+        <div class="field">
+          <div class="field-head"><span class="field-label">Úhel přechodu spád → vertikála</span><span class="field-value" id="v_bendDeg">90°</span></div>
+          <input type="range" id="bendDeg" min="0" max="90" step="1" value="90">
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-label">Radius zaoblení přechodu</span><span class="field-value" id="v_bendRadius">0.30 m</span></div>
+          <input type="range" id="bendRadiusM" min="0.05" max="3" step="0.05" value="0.3">
+        </div>
+        <hr class="divider">
+        <div class="field">
+          <div class="field-head"><span class="field-label">Úhel kužele trysky</span><span class="field-value" id="v_nozzleDeg">30°</span></div>
+          <input type="range" id="nozzleDeg" min="1" max="90" step="1" value="30">
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="field-label">Průměr trysky (ústí)</span><span class="field-value" id="v_D3">50 mm</span></div>
+          <input type="range" id="D3mm" min="5" max="300" step="1" value="50">
+        </div>
+      </div>
+
+      <div class="card ice">
+        <div class="card-header"><h2>Ledový kužel</h2><span class="drag-handle" draggable="true" title="Přetáhněte pro přeskládání karet">⠿</span></div>
+        <p class="card-sub">Táhněte body <strong>A</strong>, <strong>B</strong> (patky, i vodorovně) a <strong>S1</strong>, <strong>S2</strong> (zakřivení) přímo v diagramu. Vrchol V je ukotven k výšce stoupačky.</p>
+        <div class="results-grid">
+          <div class="result ice-hero" style="grid-column:1/-1;">
+            <div class="result-label">Objem ledu (podle nakresleného tvaru)</div>
+            <div class="result-value ice-color" id="rIceVol">— <small>m³</small></div>
+            <div class="result-note" id="rIceVolNote"></div>
+          </div>
+          <div class="result"><div class="result-label">Výška kužele (V)</div><div class="result-value ice-color" id="rIceHeight">— <small>m</small></div></div>
+          <div class="result"><div class="result-label">Dosah paty A / B</div><div class="result-value ice-color" id="rIceRadius">— <small>m</small></div></div>
+        </div>
+        <div class="warn-banner" id="iceWarnBanner"><span class="warn-dot"></span><span id="iceWarnText"></span></div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <div class="card">
+      <details>
+        <summary>Předpoklady modelu</summary>
+        <p class="assumptions" style="margin-top:8px;">
+          <strong>Materiál:</strong> hladké PE potrubí, drsnost ε = 0,0015 mm (zatím pevně dané).
+          <strong>Tření:</strong> Darcy-Weisbach, součinitel dle Swamee-Jain; délka hlavního potrubí = součet skutečných šikmých úseků podle vámi upraveného profilu.
+          <strong>Místní ztráty</strong> v koleni a trysce jsou zjednodušený inženýrský odhad podle úhlu a radiusu — pro finální realizaci ověřte s hydraulickým inženýrem.
+          <strong>Tlak na ústí trysky</strong> je vždy atmosférický (0 přetlaku), proto to není volný vstup.
+          <strong>Ledový kužel:</strong> silueta je definována pevným vrcholem V (výška stoupačky) a dvěma kvadratickými Bézierovými křivkami V→S1→A (strana k hlavnímu potrubí) a V→S2→B (strana po svahu). Objem se počítá jako součet dvou poloviční rotačních těles (každá křivka rotuje o 180° kolem svislé osy stoupačky) — zjednodušení, které dovoluje nesouměrný tvar, ale není to přesná fyzikální simulace proudění/mrznutí. Paralelně se z průtoku, ledových dnů a účinnosti namrzání počítá dostupný objem vody (převedený na led poměrem hustot 1000/917) pro srovnání, jestli by na nakreslený kužel vůbec bylo dost vody.
+          <strong>Odpor vzduchu</strong> na letící proud vody není zahrnutý — skutečná výška výstřiku bude nižší, hlavně při vysokých rychlostech.
+          <strong>Zdroj</strong> je považován za neomezenou nádrž — reálná vydatnost horské bystřiny (hlavně v suchu) může průtok dále omezit.
+        </p>
+      </details>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+const g = 9.81, nu = 1.0e-6, eps = 1.5e-6;
+const ICE_RATIO = 1000/917;
+
+function frictionFactor(v, D){
+  v = Math.max(Math.abs(v), 1e-6);
+  const Re = v*D/nu;
+  if (Re < 2300) return 64/Re;
+  return 0.25/Math.pow(Math.log10(eps/(3.7*D) + 5.74/Math.pow(Re,0.9)), 2);
+}
+function isNum(x){ return typeof x==='number' && isFinite(x); }
+function clamp(v,lo,hi){ return Math.min(Math.max(v,lo),hi); }
+
+// ---------- node profiles (pipe / terrain) ----------
+let pipeNodes = [];
+let terrainNodes = [];
+
+function makeDefaultPipeNodes(L1, slopeDeg){
+  slopeDeg = slopeDeg===undefined ? 14.5 : slopeDeg;
+  const step = 10;
+  const n = Math.max(Math.round(L1/step), 1);
+  const Lsnap = n*step;
+  const nodes = [];
+  for(let i=0;i<=n;i++){
+    const x = i*step;
+    const y = i===n ? 0 : (Lsnap-x)*Math.tan(slopeDeg*Math.PI/180);
+    nodes.push({x:x, y:y, fixed:(i===n)});
+  }
+  return nodes;
+}
+function makeDefaultTerrainNodes(slopeDeg){
+  slopeDeg = slopeDeg===undefined ? 8 : slopeDeg;
+  const step=10, extent=50, n=extent/step;
+  const nodes=[];
+  for(let i=0;i<=n;i++){
+    const x=i*step;
+    const y = i===0 ? 0 : -x*Math.tan(slopeDeg*Math.PI/180);
+    nodes.push({x:x, y:y, fixed:(i===0)});
+  }
+  return nodes;
+}
+function segAngles(nodes){
+  const out=[];
+  for(let i=0;i<nodes.length-1;i++){
+    const dx = nodes[i+1].x-nodes[i].x, dy = nodes[i+1].y-nodes[i].y;
+    out.push(Math.atan2(-dy,dx)*180/Math.PI);
+  }
+  return out;
+}
+function pipeLengthAndDrop(nodes){
+  let len=0;
+  for(let i=0;i<nodes.length-1;i++){
+    const dx=nodes[i+1].x-nodes[i].x, dy=nodes[i+1].y-nodes[i].y;
+    len += Math.sqrt(dx*dx+dy*dy);
+  }
+  const dropH = nodes[0].y - nodes[nodes.length-1].y;
+  return {len, dropH, L1: nodes[nodes.length-1].x - nodes[0].x};
+}
+function interpY(nodes, xTarget){
+  if(xTarget<=nodes[0].x) return nodes[0].y;
+  const last=nodes[nodes.length-1];
+  if(xTarget>=last.x) return last.y;
+  for(let i=0;i<nodes.length-1;i++){
+    if(xTarget>=nodes[i].x && xTarget<=nodes[i+1].x){
+      const t=(xTarget-nodes[i].x)/(nodes[i+1].x-nodes[i].x);
+      return nodes[i].y + t*(nodes[i+1].y-nodes[i].y);
+    }
+  }
+  return last.y;
+}
+
+// ---------- ice cone construction (V apex fixed, A/B/S1/S2 draggable 2D) ----------
+let iceA={x:0,y:0}, iceB={x:0,y:0}, iceS1={x:0,y:0}, iceS2={x:0,y:0};
+
+function resetIceGeom(){
+  const p = readParams();
+  const L1x = pipeNodes[pipeNodes.length-1].x;
+  const hCone = Math.max(p.H2, 0.5);
+  const reach = Math.max(hCone*0.6, 1.5);
+  const apex = {x:L1x, y:hCone};
+  iceA = {x: clamp(L1x-reach,0,L1x), y: interpY(pipeNodes, clamp(L1x-reach,0,L1x))};
+  iceB = {x: clamp(L1x+reach,L1x,L1x+50), y: interpY(terrainNodes, clamp(reach,0,50))};
+  iceS1 = {x: apex.x + 0.4*(iceA.x-apex.x), y: apex.y - 0.65*(apex.y-iceA.y)};
+  iceS2 = {x: apex.x + 0.4*(iceB.x-apex.x), y: apex.y - 0.65*(apex.y-iceB.y)};
+}
+
+function bezierPoint(P0,P1,P2,t){
+  const mt=1-t;
+  return { x: mt*mt*P0.x + 2*mt*t*P1.x + t*t*P2.x, y: mt*mt*P0.y + 2*mt*t*P1.y + t*t*P2.y };
+}
+function halfRevolutionVolume(P0,P1,P2,axisX,steps){
+  steps = steps||120;
+  let vol=0, prev=bezierPoint(P0,P1,P2,0);
+  for(let i=1;i<=steps;i++){
+    const t=i/steps, cur=bezierPoint(P0,P1,P2,t);
+    const rMid = Math.abs(((prev.x+cur.x)/2)-axisX);
+    const dy = Math.abs(cur.y-prev.y);
+    vol += 0.5*Math.PI*rMid*rMid*dy;
+    prev=cur;
+  }
+  return vol;
+}
+
+// ---------- physics ----------
+function computeSystem(p){
+  const D1=p.D1mm/1000, D2=p.D2mm/1000, D3=p.D3mm/1000;
+  const H2=p.H2;
+  const bendRadiusM=Math.max(p.bendRadiusM,0.01);
+  const nozzleDeg=Math.max(p.nozzleDeg,1);
+
+  const pl = pipeLengthAndDrop(pipeNodes);
+  const totalPipeLen = pl.len;
+  const dropH = pl.dropH;
+  const LhorProj = pl.L1;
+  const availableHead = dropH - H2;
+
+  const A1=Math.PI/4*D1*D1, A2=Math.PI/4*D2*D2, A3=Math.PI/4*D3*D3;
+
+  if(availableHead<=0){
+    return {invalid:true, dropH, availableHead, LhorProj, H2, D1,D2,D3};
+  }
+
+  const Lnozzle = Math.abs(D2-D3)/2/Math.tan(nozzleDeg*Math.PI/180);
+  const rOverD = bendRadiusM/D2;
+  const Kbend = clamp((0.10+1.2/Math.max(rOverD,0.1))*(p.bendDeg/90),0.02,2.5);
+  const Knozzle = clamp(0.02+0.006*nozzleDeg,0,0.6);
+
+  function residual(v3){
+    const v2=v3*(A3/A2), v1=v3*(A3/A1);
+    const f1=frictionFactor(v1,D1), f2=frictionFactor(v2,D2), f3=frictionFactor(v3,D3);
+    const hf1=f1*(totalPipeLen/D1)*v1*v1/(2*g);
+    const hf2=f2*(H2/D2)*v2*v2/(2*g);
+    const hf3=Lnozzle>0 ? f3*(Lnozzle/D3)*v3*v3/(2*g) : 0;
+    const hBend=Kbend*v2*v2/(2*g);
+    const hNozzleMinor=Knozzle*v3*v3/(2*g);
+    return v3*v3/(2*g)+hf1+hf2+hf3+hBend+hNozzleMinor-availableHead;
+  }
+
+  let lo=0.001, hi=45;
+  for(let i=0;i<200;i++){
+    const mid=(lo+hi)/2;
+    if(residual(mid)>0) hi=mid; else lo=mid;
+  }
+  const v3=(lo+hi)/2;
+  const v2=v3*(A3/A2), v1=v3*(A3/A1);
+  const f1=frictionFactor(v1,D1), f2=frictionFactor(v2,D2), f3=frictionFactor(v3,D3);
+  const hf1=f1*(totalPipeLen/D1)*v1*v1/(2*g);
+  const hf2=f2*(H2/D2)*v2*v2/(2*g);
+  const hf3=Lnozzle>0 ? f3*(Lnozzle/D3)*v3*v3/(2*g) : 0;
+  const hBend=Kbend*v2*v2/(2*g);
+  const hNozzleMinor=Knozzle*v3*v3/(2*g);
+
+  const Q=v3*A3;
+  const heightAboveNozzle=v3*v3/(2*g);
+  const totalHeightFromGround=H2+heightAboveNozzle;
+
+  const p2head=availableHead-H2-(v2*v2)/(2*g)-hf1-hf2-hBend;
+  const p2Pa=1000*g*Math.max(p2head,0);
+
+  const operatingDays=Math.max(365-p.iceDays,0);
+  const Qday=Q*86400;
+  const Qyear=Qday*operatingDays;
+
+  // ice cone volume from the draggable V/A/B/S1/S2 construction
+  const L1x = LhorProj;
+  const hCone = Math.max(H2,0.5);
+  const apex = {x:L1x, y:hCone};
+  const Vice = halfRevolutionVolume(apex,iceS1,iceA,apex.x) + halfRevolutionVolume(apex,iceS2,iceB,apex.x);
+  const Vwater = Qday*p.iceDays*(p.freezeEffPct/100);
+  const ViceAvailable = Vwater*ICE_RATIO;
+  const rUp = Math.abs(iceA.x-apex.x), rDown = Math.abs(iceB.x-apex.x);
+
+  return {
+    invalid:false, dropH, availableHead, LhorProj, H2, D1,D2,D3, Lnozzle,
+    v1,v2,v3,Q,heightAboveNozzle,totalHeightFromGround,
+    hf1,hf2,hf3,hBend,hNozzleMinor,Kbend,Knozzle,
+    p2Pa, operatingDays, Qday, Qyear,
+    Vwater, Vice, ViceAvailable, hCone, rUp, rDown, apex
+  };
+}
+
+// ---------- UI wiring ----------
+const sliderIds = ["L1","D1mm","H2","D2mm","bendDeg","bendRadiusM","nozzleDeg","D3mm","iceDays","freezeEffPct"];
+const els = {};
+sliderIds.forEach(id => els[id]=document.getElementById(id));
+
+function fmt(n,digits){ if(!isNum(n)) return "—"; return n.toLocaleString('cs-CZ',{minimumFractionDigits:digits,maximumFractionDigits:digits}); }
+
+function readParams(){
+  return {
+    L1: parseFloat(els.L1.value),
+    D1mm: parseFloat(els.D1mm.value),
+    H2: parseFloat(els.H2.value),
+    D2mm: parseFloat(els.D2mm.value),
+    bendDeg: parseFloat(els.bendDeg.value),
+    bendRadiusM: parseFloat(els.bendRadiusM.value),
+    nozzleDeg: parseFloat(els.nozzleDeg.value),
+    D3mm: parseFloat(els.D3mm.value),
+    iceDays: parseFloat(els.iceDays.value),
+    freezeEffPct: parseFloat(els.freezeEffPct.value)
+  };
+}
+
+function updateLabels(p){
+  document.getElementById('v_L1').textContent=p.L1+' m';
+  document.getElementById('lblL1').textContent=p.L1;
+  document.getElementById('v_D1').textContent=p.D1mm+' mm';
+  document.getElementById('v_H2').textContent=p.H2+' m';
+  document.getElementById('v_D2').textContent=p.D2mm+' mm';
+  document.getElementById('v_bendDeg').textContent=p.bendDeg+'°';
+  document.getElementById('v_bendRadius').textContent=p.bendRadiusM.toFixed(2)+' m';
+  document.getElementById('v_nozzleDeg').textContent=p.nozzleDeg+'°';
+  document.getElementById('v_D3').textContent=p.D3mm+' mm';
+  document.getElementById('v_iceDays').textContent=p.iceDays+' dní';
+  document.getElementById('v_freezeEff').textContent=p.freezeEffPct+' %';
+  document.getElementById('hint_operatingDays').textContent='Provozních (nemrznoucích) dní: '+Math.max(365-p.iceDays,0);
+}
+
+function updateSegTable(tbodySelector, nodes){
+  const tbody = document.querySelector(tbodySelector+' tbody');
+  const angles = segAngles(nodes);
+  let html='';
+  for(let i=0;i<angles.length;i++){
+    const a=angles[i];
+    const cls = a>=0 ? 'angle-down' : 'angle-up';
+    html += '<tr><td>'+(i+1)+'</td><td>'+nodes[i+1].x.toFixed(0)+'</td><td>'+nodes[i+1].y.toFixed(2)+'</td><td class="'+cls+'">'+a.toFixed(1)+'°</td></tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+function updateResults(r){
+  const warnBanner=document.getElementById('warnBanner');
+  const warnText=document.getElementById('warnText');
+  const iceWarnBanner=document.getElementById('iceWarnBanner');
+  const iceWarnText=document.getElementById('iceWarnText');
+  iceWarnBanner.classList.remove('show');
+
+  if(r.invalid){
+    warnBanner.classList.add('show');
+    warnText.textContent='Nedostatečný spád — vertikální výška ('+fmt(r.H2,1)+' m) přesahuje převýšení hlavního potrubí ('+fmt(r.dropH,1)+' m). Voda k trysce nedoteče.';
+    ['rHeightTotal','rVelocity','rFlow','rPressureBefore','rVolDay','rVolYear','rIceVol','rIceHeight','rIceRadius'].forEach(id=>{
+      document.getElementById(id).innerHTML='— <small></small>';
+    });
+    document.getElementById('energyBar').innerHTML='';
+    document.getElementById('lossBreakdown').innerHTML='';
+    return;
+  }
+  warnBanner.classList.remove('show');
+
+  document.getElementById('rHeightTotal').innerHTML=fmt(r.totalHeightFromGround,1)+' <small>m</small>';
+  document.getElementById('rVelocity').innerHTML=fmt(r.v3,2)+' <small>m/s</small>';
+  document.getElementById('rFlow').innerHTML=fmt(r.Q*1000,2)+' <small>l/s</small>';
+  document.getElementById('rPressureBefore').innerHTML=fmt(r.p2Pa/1e5,2)+' <small>bar</small>';
+  document.getElementById('rVolDay').innerHTML=fmt(r.Qday,0)+' <small>m³</small>';
+  document.getElementById('rVolYear').innerHTML=fmt(r.Qyear,0)+' <small>m³ ('+r.operatingDays+' dní)</small>';
+
+  const totalLosses=r.hf1+r.hf2+r.hf3+r.hBend+r.hNozzleMinor;
+  const budget=r.dropH;
+  const pctH2=100*r.H2/budget, pctLoss=100*totalLosses/budget, pctJet=100*r.heightAboveNozzle/budget;
+
+  document.getElementById('energyBar').innerHTML =
+    '<div class="energy-seg" style="width:'+pctH2+'%;background:var(--pipe-dim)" title="Výška stoupačky"></div>'+
+    '<div class="energy-seg" style="width:'+pctLoss+'%;background:var(--warn)" title="Ztráty"></div>'+
+    '<div class="energy-seg" style="width:'+pctJet+'%;background:var(--water)" title="Výstřik"></div>';
+
+  document.getElementById('lossBreakdown').innerHTML =
+    '<div class="breakdown-row"><span>Tření — hlavní potrubí</span><span>'+fmt(r.hf1,2)+' m</span></div>'+
+    '<div class="breakdown-row"><span>Tření — stoupačka</span><span>'+fmt(r.hf2,2)+' m</span></div>'+
+    '<div class="breakdown-row"><span>Tření — tryska</span><span>'+fmt(r.hf3,2)+' m</span></div>'+
+    '<div class="breakdown-row"><span>Koleno (K='+r.Kbend.toFixed(2)+')</span><span>'+fmt(r.hBend,2)+' m</span></div>'+
+    '<div class="breakdown-row"><span>Zúžení trysky (K='+r.Knozzle.toFixed(2)+')</span><span>'+fmt(r.hNozzleMinor,2)+' m</span></div>';
+
+  document.getElementById('rIceVol').innerHTML=fmt(r.Vice,0)+' <small>m³</small>';
+  document.getElementById('rIceHeight').innerHTML=fmt(r.hCone,1)+' <small>m</small>';
+  document.getElementById('rIceRadius').innerHTML=fmt(r.rUp,1)+' m ↑ / '+fmt(r.rDown,1)+' m ↓';
+
+  const pctOfAvailable = r.ViceAvailable>0 ? 100*r.Vice/r.ViceAvailable : 0;
+  let availNote = 'Zahrnuje objemovou roztažnost vody (+9,1 % oproti vodě). ';
+  if(r.ViceAvailable<=0){
+    availNote += 'Dostupná voda za ledové dny: 0 m³.';
+  } else if(pctOfAvailable>100){
+    availNote += 'Za ledové dny je dostupných jen '+fmt(r.ViceAvailable,0)+' m³ vody ('+fmt(pctOfAvailable,0)+' % z potřeby) — na nakreslený kužel by voda nestačila.';
+    iceWarnBanner.classList.add('show');
+    iceWarnText.textContent='Nakreslený kužel potřebuje víc ledu, než kolik ho může vzniknout z dostupné vody za '+r.iceDays+' ledových dní. Zmenšete tvar nebo zvyšte počet ledových dní / účinnost namrzání.';
+  } else {
+    availNote += 'Za ledové dny je dostupných '+fmt(r.ViceAvailable,0)+' m³ vody — spotřebováno by bylo '+fmt(pctOfAvailable,0)+' %, zbytek by odtekl nezmrzlý.';
+  }
+  document.getElementById('rIceVolNote').textContent = availNote;
+}
+
+// ---------- diagram ----------
+function drawDiagram(p, r){
+  const svg=document.getElementById('diagram');
+  try{
+    const W=760,H=420,padL=58,padR=64,padT=34,padB=44;
+    const drawW=W-padL-padR, drawH=H-padT-padB;
+
+    const L1x = pipeNodes[pipeNodes.length-1].x;
+    if(!isNum(L1x)) throw new Error('invalid L1x');
+
+    const hConeGuess = Math.max(p.H2,0.5);
+    const jetTop = r.invalid ? hConeGuess : r.totalHeightFromGround;
+
+    const iceYs = [iceA.y, iceB.y, iceS1.y, iceS2.y, hConeGuess];
+    const iceXs = [iceA.x, iceB.x, iceS1.x, iceS2.x];
+    const pipeYs = pipeNodes.map(n=>n.y);
+    const terrainYs = terrainNodes.map(n=>n.y);
+
+    const allYmax = Math.max(...pipeYs, ...iceYs, jetTop, 0.5);
+    const allYmin = Math.min(...pipeYs, ...terrainYs, ...iceYs, 0);
+    const allXmax = Math.max(L1x+50, ...iceXs, L1x);
+    const allXmin = Math.min(0, ...iceXs);
+
+    const xExtent = (allXmax-allXmin)*1.06;
+    const yUp = allYmax*1.12;
+    const yDown = Math.max(-allYmin*1.25, 0.5);
+    const totalYSpan = yUp+yDown;
+
+    if(!isNum(xExtent) || !isNum(totalYSpan) || xExtent<=0 || totalYSpan<=0) throw new Error('invalid extents');
+
+    const scale = Math.min(drawW/xExtent, drawH/totalYSpan);
+    if(!isNum(scale) || scale<=0) throw new Error('invalid scale');
+
+    const groundY = padT + yUp*scale;
+    const originX = padL - allXmin*scale;
+    const pxX = x => originX + x*scale;
+    const pxY = y => groundY - y*scale;
+
+    let s='';
+
+    // baseline
+    s += '<line x1="'+pxX(allXmin-2)+'" y1="'+groundY+'" x2="'+pxX(L1x+50)+'" y2="'+groundY+'" stroke="var(--border)" stroke-width="1"/>';
+    s += '<text x="'+pxX(L1x)+'" y="'+(groundY+15)+'" fill="var(--text-muted)" font-size="9" font-family=\'IBM Plex Mono, monospace\' text-anchor="middle">0 m (patka stoupačky)</text>';
+
+    // terrain profile
+    let terrainPath='';
+    terrainNodes.forEach((n,i)=>{ terrainPath += (i===0?'M':'L')+pxX(L1x+n.x)+' '+pxY(n.y)+' '; });
+    s += '<path d="'+terrainPath+'" fill="none" stroke="var(--terrain)" stroke-width="2" opacity="0.8"/>';
+    terrainNodes.forEach((n,i)=>{
+      s += '<circle class="node-handle'+(n.fixed?' fixed':'')+'" data-type="terrain" data-idx="'+i+'" cx="'+pxX(L1x+n.x)+'" cy="'+pxY(n.y)+'" r="4.5" fill="'+(n.fixed?'var(--text-muted)':'var(--terrain)')+'" stroke="var(--bg)" stroke-width="1.2"/>';
+    });
+
+    // main pipe polyline
+    let pipePath='';
+    pipeNodes.forEach((n,i)=>{ pipePath += (i===0?'M':'L')+pxX(n.x)+' '+pxY(n.y)+' '; });
+    const strokeMain = clamp(p.D1mm/1000*scale,3,13);
+    const pipeColor = r.invalid ? 'var(--warn)' : 'var(--pipe)';
+    s += '<path d="'+pipePath+'" fill="none" stroke="'+pipeColor+'" stroke-width="'+strokeMain+'" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>';
+    pipeNodes.forEach((n,i)=>{
+      s += '<circle class="node-handle'+(n.fixed?' fixed':'')+'" data-type="pipe" data-idx="'+i+'" cx="'+pxX(n.x)+'" cy="'+pxY(n.y)+'" r="5" fill="'+(n.fixed?'var(--text-muted)':'var(--pipe)')+'" stroke="var(--bg)" stroke-width="1.2"/>';
+    });
+    s += '<text x="'+pxX(pipeNodes[0].x)+'" y="'+(pxY(pipeNodes[0].y)-10)+'" fill="var(--text-muted)" font-size="9" font-family=\'IBM Plex Mono, monospace\'>zdroj</text>';
+
+    if(!r.invalid){
+      const baseX=pxX(L1x), baseY=groundY;
+      const nozzleBaseY=pxY(p.H2), nozzleTipY=pxY(p.H2+(r.Lnozzle||0));
+      const halfD2=clamp(p.D2mm/1000*scale/2,2,8);
+      const halfD3=clamp(p.D3mm/1000*scale/2,1.5,6);
+      const strokeRiser=clamp(p.D2mm/1000*scale,2,11);
+      const bendR=clamp(p.bendRadiusM*scale,5,20);
+
+      s += '<circle cx="'+baseX+'" cy="'+baseY+'" r="'+(bendR*0.5)+'" fill="none" stroke="'+pipeColor+'" stroke-width="3" opacity="0.5"/>';
+      s += '<line x1="'+baseX+'" y1="'+baseY+'" x2="'+baseX+'" y2="'+nozzleBaseY+'" stroke="'+pipeColor+'" stroke-width="'+strokeRiser+'" stroke-linecap="round" opacity="0.9"/>';
+      s += '<polygon points="'+(baseX-halfD2)+','+nozzleBaseY+' '+(baseX+halfD2)+','+nozzleBaseY+' '+(baseX+halfD3)+','+nozzleTipY+' '+(baseX-halfD3)+','+nozzleTipY+'" fill="'+pipeColor+'" opacity="0.75"/>';
+
+      const jetTopY=pxY(r.totalHeightFromGround);
+      s += '<line x1="'+baseX+'" y1="'+nozzleTipY+'" x2="'+baseX+'" y2="'+jetTopY+'" stroke="var(--water)" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"/>';
+      s += '<circle cx="'+baseX+'" cy="'+jetTopY+'" r="3.5" fill="var(--water)"/>';
+      s += '<text x="'+(baseX+13)+'" y="'+(jetTopY-5)+'" fill="var(--water)" font-size="11" font-weight="600" font-family=\'IBM Plex Mono, monospace\'>'+fmt(r.totalHeightFromGround,1)+' m</text>';
+    }
+
+    // ---- ice cone construction: V (apex) fixed, A/B/S1/S2 draggable ----
+    const apex = {x:L1x, y:Math.max(p.H2,0.5)};
+    const pAx=pxX(iceA.x), pAy=pxY(iceA.y);
+    const pBx=pxX(iceB.x), pBy=pxY(iceB.y);
+    const pS1x=pxX(iceS1.x), pS1y=pxY(iceS1.y);
+    const pS2x=pxX(iceS2.x), pS2y=pxY(iceS2.y);
+    const pVx=pxX(apex.x), pVy=pxY(apex.y);
+
+    const coords=[pAx,pAy,pBx,pBy,pS1x,pS1y,pS2x,pS2y,pVx,pVy];
+    if(coords.every(isNum) && r.Vice>0){
+      const d = 'M '+pVx+' '+pVy+' Q '+pS1x+' '+pS1y+' '+pAx+' '+pAy+' L '+pVx+' '+groundY+' L '+pBx+' '+pBy+' Q '+pS2x+' '+pS2y+' '+pVx+' '+pVy+' Z';
+      s += '<path d="'+d+'" fill="var(--ice)" opacity="0.16" stroke="var(--ice2)" stroke-width="1.2" stroke-opacity="0.7"/>';
+      // construction guide lines (dashed), like the reference sketch
+      s += '<line x1="'+pVx+'" y1="'+pVy+'" x2="'+pS1x+'" y2="'+pS1y+'" stroke="var(--ice2)" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>';
+      s += '<line x1="'+pS1x+'" y1="'+pS1y+'" x2="'+pAx+'" y2="'+pAy+'" stroke="var(--ice2)" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>';
+      s += '<line x1="'+pVx+'" y1="'+pVy+'" x2="'+pS2x+'" y2="'+pS2y+'" stroke="var(--ice2)" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>';
+      s += '<line x1="'+pS2x+'" y1="'+pS2y+'" x2="'+pBx+'" y2="'+pBy+'" stroke="var(--ice2)" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>';
+
+      s += '<circle class="node-handle" data-type="iceA" cx="'+pAx+'" cy="'+pAy+'" r="5.5" fill="var(--ice)" stroke="var(--bg)" stroke-width="1.3"/>';
+      s += '<circle class="node-handle" data-type="iceB" cx="'+pBx+'" cy="'+pBy+'" r="5.5" fill="var(--ice)" stroke="var(--bg)" stroke-width="1.3"/>';
+      s += '<circle class="node-handle" data-type="iceS1" cx="'+pS1x+'" cy="'+pS1y+'" r="4.5" fill="var(--ice2)" stroke="var(--bg)" stroke-width="1.3"/>';
+      s += '<circle class="node-handle" data-type="iceS2" cx="'+pS2x+'" cy="'+pS2y+'" r="4.5" fill="var(--ice2)" stroke="var(--bg)" stroke-width="1.3"/>';
+      s += '<circle cx="'+pVx+'" cy="'+pVy+'" r="4" fill="var(--text)" stroke="var(--bg)" stroke-width="1.2"/>';
+
+      s += '<text x="'+(pVx+7)+'" y="'+(pVy-6)+'" fill="var(--text)" font-size="10" font-family=\'IBM Plex Mono, monospace\'>V</text>';
+      s += '<text x="'+(pAx-4)+'" y="'+(pAy-8)+'" fill="var(--ice)" font-size="10" font-family=\'IBM Plex Mono, monospace\' text-anchor="end">A</text>';
+      s += '<text x="'+(pBx+7)+'" y="'+(pBy-8)+'" fill="var(--ice)" font-size="10" font-family=\'IBM Plex Mono, monospace\'>B</text>';
+      s += '<text x="'+(pS1x-6)+'" y="'+(pS1y+3)+'" fill="var(--ice2)" font-size="9" font-family=\'IBM Plex Mono, monospace\' text-anchor="end">S1</text>';
+      s += '<text x="'+(pS2x+6)+'" y="'+(pS2y+3)+'" fill="var(--ice2)" font-size="9" font-family=\'IBM Plex Mono, monospace\'>S2</text>';
+    }
+
+    if(r.invalid){
+      s += '<text x="'+pxX(L1x*0.4)+'" y="'+(groundY-18)+'" fill="var(--warn)" font-size="10" font-family=\'IBM Plex Mono, monospace\'>nedostatečný spád</text>';
+    }
+
+    svg.innerHTML = s;
+  }catch(err){
+    console.error('drawDiagram failed:', err);
+    svg.innerHTML = '<rect x="0" y="0" width="760" height="420" fill="var(--bg-panel-2)"/>'+
+      '<text x="380" y="200" fill="var(--warn)" font-size="13" text-anchor="middle" font-family="IBM Plex Mono, monospace">Diagram se nepodařilo vykreslit s aktuálním nastavením.</text>'+
+      '<text x="380" y="222" fill="var(--text-muted)" font-size="11" text-anchor="middle" font-family="IBM Plex Mono, monospace">Zkuste tlačítka Resetovat profil / Resetovat tvar kužele.</text>';
+  }
+}
+
+// ---------- recompute ----------
+function recompute(){
+  try{
+    const p = readParams();
+    updateLabels(p);
+    const r = computeSystem(p);
+    updateResults(r);
+    drawDiagram(p, r);
+    updateSegTable('#pipeSegTable', pipeNodes);
+    updateSegTable('#terrainSegTable', terrainNodes);
+  }catch(err){
+    console.error('recompute failed:', err);
+  }
+}
+
+sliderIds.forEach(id=>{
+  els[id].addEventListener('input', ()=>{
+    if(id==='L1'){
+      pipeNodes = makeDefaultPipeNodes(parseFloat(els.L1.value));
+      resetIceGeom();
+    }
+    if(id==='H2'){
+      resetIceGeom();
+    }
+    recompute();
+  });
+});
+
+document.getElementById('resetPipe').addEventListener('click', ()=>{
+  pipeNodes = makeDefaultPipeNodes(parseFloat(els.L1.value));
+  resetIceGeom();
+  recompute();
+});
+document.getElementById('resetTerrain').addEventListener('click', ()=>{
+  terrainNodes = makeDefaultTerrainNodes();
+  resetIceGeom();
+  recompute();
+});
+document.getElementById('resetIce').addEventListener('click', ()=>{
+  resetIceGeom();
+  recompute();
+});
+
+// ---------- drag handling ----------
+let dragging = null;
+
+function svgPointFromEvent(evt){
+  const svg=document.getElementById('diagram');
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const ctm = svg.getScreenCTM().inverse();
+  return pt.matrixTransform(ctm);
+}
+
+function currentGeom(){
+  const p = readParams();
+  const r = computeSystem(p);
+  const W=760,H=420,padL=58,padR=64,padT=34,padB=44;
+  const drawW=W-padL-padR, drawH=H-padT-padB;
+  const L1x = pipeNodes[pipeNodes.length-1].x;
+  const hConeGuess = Math.max(p.H2,0.5);
+  const jetTop = r.invalid ? hConeGuess : r.totalHeightFromGround;
+  const iceYs=[iceA.y,iceB.y,iceS1.y,iceS2.y,hConeGuess];
+  const iceXs=[iceA.x,iceB.x,iceS1.x,iceS2.x];
+  const pipeYs=pipeNodes.map(n=>n.y), terrainYs=terrainNodes.map(n=>n.y);
+  const allYmax=Math.max(...pipeYs, ...iceYs, jetTop, 0.5);
+  const allYmin=Math.min(...pipeYs, ...terrainYs, ...iceYs, 0);
+  const allXmax=Math.max(L1x+50, ...iceXs, L1x);
+  const allXmin=Math.min(0, ...iceXs);
+  const xExtent=(allXmax-allXmin)*1.06;
+  const yUp=allYmax*1.12, yDown=Math.max(-allYmin*1.25,0.5);
+  const totalYSpan=yUp+yDown;
+  const scale=Math.min(drawW/xExtent, drawH/totalYSpan);
+  const groundY=padT+yUp*scale;
+  const originX=padL-allXmin*scale;
+  return {scale, groundY, originX, L1x};
+}
+
+document.getElementById('diagram').addEventListener('pointerdown', (evt)=>{
+  const target = evt.target;
+  if(!target.classList || !target.classList.contains('node-handle')) return;
+  if(target.classList.contains('fixed')) return;
+  dragging = {type: target.getAttribute('data-type'), idx: parseInt(target.getAttribute('data-idx'),10)};
+  evt.target.setPointerCapture(evt.pointerId);
+});
+
+document.getElementById('diagram').addEventListener('pointermove', (evt)=>{
+  if(!dragging) return;
+  const geom = currentGeom();
+  if(!isNum(geom.scale) || geom.scale<=0) return;
+  const pt = svgPointFromEvent(evt);
+  const xPhys = (pt.x - geom.originX)/geom.scale;
+  const yPhys = (geom.groundY - pt.y)/geom.scale;
+  if(!isNum(xPhys) || !isNum(yPhys)) return;
+
+  if(dragging.type==='pipe'){
+    pipeNodes[dragging.idx].y = clamp(yPhys, -5, 60);
+  } else if(dragging.type==='terrain'){
+    terrainNodes[dragging.idx].y = clamp(yPhys, -20, 20);
+  } else if(dragging.type==='iceA'){
+    iceA.x = clamp(xPhys, 0, geom.L1x);
+    iceA.y = clamp(yPhys, -20, 80);
+  } else if(dragging.type==='iceB'){
+    iceB.x = clamp(xPhys, geom.L1x, geom.L1x+50);
+    iceB.y = clamp(yPhys, -20, 80);
+  } else if(dragging.type==='iceS1'){
+    iceS1.x = clamp(xPhys, geom.L1x-100, geom.L1x+20);
+    iceS1.y = clamp(yPhys, -20, 100);
+  } else if(dragging.type==='iceS2'){
+    iceS2.x = clamp(xPhys, geom.L1x-20, geom.L1x+100);
+    iceS2.y = clamp(yPhys, -20, 100);
+  }
+  recompute();
+});
+
+['pointerup','pointercancel','pointerleave'].forEach(evtName=>{
+  document.getElementById('diagram').addEventListener(evtName, ()=>{ dragging=null; });
+});
+
+// ---------- card reordering (drag and drop) ----------
+let draggedCard = null;
+document.querySelectorAll('.drag-handle').forEach(handle=>{
+  handle.addEventListener('dragstart', (evt)=>{
+    draggedCard = handle.closest('.card');
+    draggedCard.classList.add('dragging');
+    evt.dataTransfer.effectAllowed = 'move';
+    evt.dataTransfer.setData('text/plain', '');
+  });
+  handle.addEventListener('dragend', ()=>{
+    if(draggedCard) draggedCard.classList.remove('dragging');
+    document.querySelectorAll('.card.drag-over').forEach(c=>c.classList.remove('drag-over'));
+    draggedCard = null;
+  });
+});
+document.querySelectorAll('.card').forEach(card=>{
+  card.addEventListener('dragover', (evt)=>{
+    if(!draggedCard || draggedCard===card) return;
+    evt.preventDefault();
+    evt.dataTransfer.dropEffect = 'move';
+    card.classList.add('drag-over');
+    const rect = card.getBoundingClientRect();
+    const before = (evt.clientY - rect.top) < rect.height/2;
+    card.parentNode.insertBefore(draggedCard, before ? card : card.nextSibling);
+  });
+  card.addEventListener('dragleave', ()=>{ card.classList.remove('drag-over'); });
+  card.addEventListener('drop', (evt)=>{ evt.preventDefault(); card.classList.remove('drag-over'); });
+});
+
+// ---------- init ----------
+pipeNodes = makeDefaultPipeNodes(100, 14.5);
+terrainNodes = makeDefaultTerrainNodes(8);
+resetIceGeom();
+recompute();
+</script>
+</body>
+</html>
