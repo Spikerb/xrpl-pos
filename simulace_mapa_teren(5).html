@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulace tání ledové stúpy - mapa, terén, slunce</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+  :root {
+    --bg: #f7f6f2; --card: #ffffff; --border: #e1e0d9;
+    --text: #1a1a19; --text-secondary: #52514e; --text-muted: #898781;
+    --accent-blue: #2a78d6; --accent-orange: #eb6834;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1.5rem 1rem; line-height: 1.55; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { font-size: 21px; font-weight: 600; margin: 0 0 4px; }
+  h2 { font-size: 14px; font-weight: 600; margin: 0 0 10px; color: var(--text-secondary); }
+  .subtitle { color: var(--text-secondary); font-size: 13px; margin: 0 0 1.25rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+  label { font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 3px; }
+  select, input[type=range], input[type=number], input[type=text] { width: 100%; }
+  select, input[type=number], input[type=text] { height: 34px; border-radius: 8px; border: 1px solid var(--border); padding: 0 10px; background: #fff; font-size: 13px; }
+  button { height: 38px; border-radius: 8px; border: 1px solid var(--border); background: #fff; padding: 0 14px; font-size: 13px; cursor: pointer; }
+  button:hover { background: #f1efe8; }
+  button.primary { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); width: 100%; }
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row span.out { font-size: 13px; font-weight: 600; min-width: 40px; text-align: right; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-secondary); margin: 0 0 8px; }
+  .legend span.swatch { display: inline-block; width: 16px; height: 2px; margin-right: 4px; vertical-align: middle; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; }
+  .metric { background: #f1efe8; border-radius: 8px; padding: 0.85rem; }
+  .metric p.label { font-size: 12px; color: var(--text-secondary); margin: 0 0 3px; }
+  .metric p.value { font-size: 19px; font-weight: 600; margin: 0; }
+  .chart-box { position: relative; width: 100%; height: 260px; }
+  .chart-box.small { height: 170px; }
+  .info { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+  .status { font-size: 12px; margin-top: 8px; padding: 7px 10px; border-radius: 8px; display: none; }
+  .status.show { display: block; }
+  .status.loading { background: #e6f1fb; color: #0c447c; }
+  .status.error { background: #fcebeb; color: #791f1f; }
+  .status.ok { background: #eaf3de; color: #27500a; }
+  #map { height: 460px; border-radius: 8px; border: 1px solid var(--border); }
+  .top-grid { display: grid; grid-template-columns: 280px 1fr 300px; gap: 16px; align-items: start; }
+  .col-map .card { padding: 1rem; }
+  footer { font-size: 11px; color: var(--text-muted); margin-top: 1rem; }
+  @media (max-width: 980px) {
+    .top-grid { grid-template-columns: 1fr; }
+    #map { height: 360px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Simulace tání ledové stúpy podle skutečné mapové lokality</h1>
+  <p class="subtitle">Klikněte na mapě na místo - aplikace načte nadmořskou výšku a spočítá zastínění okolním terénem z reálných výškových dat</p>
+
+  <div class="top-grid">
+    <div class="col-left">
+      <div class="card">
+        <h2>Terén</h2>
+        <div class="field two">
+          <div><label>Zeměpisná šířka</label><input type="number" id="lat" value="46.02" step="0.01"></div>
+          <div><label>Nadmořská výška (m)</label><input type="number" id="elev" value="1600" step="10"></div>
+        </div>
+        <div class="field">
+          <label for="exposed">Otevřený azimutový výsek pro slunce (%)</label>
+          <div class="row"><input type="range" min="10" max="100" step="5" value="35" id="exposed"><span class="out" id="exposedOut">35%</span></div>
+          <p class="info" id="exposedInfo">Doplní se automaticky po analýze na mapě.</p>
+        </div>
+        <div class="field">
+          <div class="chart-box small"><canvas id="horizonChart" role="img" aria-label="Polární graf zastínění terénem podle světové strany"></canvas></div>
+        </div>
+        <div class="field">
+          <label for="substrate">Typ okolního podloží</label>
+          <select id="substrate">
+            <option value="rock">Skalnaté / kamenité</option>
+            <option value="grass">Travnaté</option>
+          </select>
+          <p class="info">Z mapy se nedetekuje automaticky.</p>
+        </div>
+        <div class="field">
+          <label for="startDay">Datum zahájení stavby</label>
+          <select id="startDay">
+            <option value="305">1. listopadu</option>
+            <option value="335" selected>1. prosince</option>
+            <option value="1">1. ledna</option>
+            <option value="32">1. února</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-map">
+      <div class="card">
+        <div class="row" style="margin-bottom:10px;">
+          <input type="text" id="search" placeholder="Hledat místo, např. Zermatt, Švýcarsko">
+          <button id="searchBtn">Hledat</button>
+        </div>
+        <div id="map"></div>
+        <div class="status error" id="libError">Mapová knihovna se nenačetla. Zkontrolujte připojení k internetu, nebo že soubor neblokuje firewall/antivir či rozšíření prohlížeče (ochrana sledování). Zkuste soubor otevřít v jiném prohlížeči.</div>
+        <div class="row" style="margin-top:10px; justify-content:space-between;">
+          <div class="info" id="coordInfo">Klikněte na mapu pro umístění bodu.</div>
+          <button id="analyzeBtn" class="primary" style="width:auto;">Analyzovat lokalitu</button>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="card">
+        <h2>Klima a led</h2>
+        <div class="field">
+          <label for="temp">Teplota vzduchu v místě (°C)</label>
+          <div class="row"><input type="range" min="-10" max="20" step="1" value="6" id="temp"><span class="out" id="tempOut">6°C</span></div>
+        </div>
+        <div class="field">
+          <label for="solar">Sluneční záření, jasná obloha (W/m²)</label>
+          <div class="row"><input type="range" min="100" max="900" step="10" value="500" id="solar"><span class="out" id="solarOut">500</span></div>
+        </div>
+        <div class="field">
+          <label for="wind">Vítr / konvekce</label>
+          <select id="wind">
+            <option value="low" selected>Slabý</option>
+            <option value="med">Střední</option>
+            <option value="high">Silný</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="infil">Vsakování tající vody (%)</label>
+          <div class="row"><input type="range" min="0" max="100" step="5" value="60" id="infil"><span class="out" id="infilOut">60%</span></div>
+        </div>
+        <div class="field">
+          <label for="volume">Počáteční objem ledu (m³)</label>
+          <div class="row"><input type="range" min="10" max="200" step="5" value="60" id="volume"><span class="out" id="volumeOut">60</span></div>
+        </div>
+        <div class="field">
+          <label for="radius">Poloměr základny (m)</label>
+          <div class="row"><input type="range" min="1" max="6" step="0.5" value="3" id="radius"><span class="out" id="radiusOut">3</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="legend">
+      <span><span class="swatch" style="background:#2a78d6;"></span>Plochý tvar - odtok</span>
+      <span><span class="swatch" style="border-top:2px dashed #2a78d6; background:none;"></span>Plochý tvar - vsak</span>
+      <span><span class="swatch" style="background:#eb6834;"></span>Kužel - odtok</span>
+      <span><span class="swatch" style="border-top:2px dashed #eb6834; background:none;"></span>Kužel - vsak</span>
+    </div>
+    <div class="chart-box"><canvas id="chart" role="img" aria-label="Graf úbytku objemu ledu v čase podle kalendářních dnů"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="metrics">
+      <div class="metric"><p class="label">Plocha, odtok</p><p class="value" id="dFlatRun">-</p></div>
+      <div class="metric"><p class="label">Plocha, vsak</p><p class="value" id="dFlatInf">-</p></div>
+      <div class="metric"><p class="label">Kužel, odtok</p><p class="value" id="dConeRun">-</p></div>
+      <div class="metric"><p class="label">Kužel, vsak</p><p class="value" id="dConeInf">-</p></div>
+    </div>
+  </div>
+
+  <footer>
+    Nadmořská výška a zastínění terénem se počítají ze skutečných výškových dat veřejného Open-Elevation API (dvanáct směrů, vzdálenosti 0,5-8 km) - vyžaduje internetové připojení. Tento veřejný server bývá občas pomalý nebo dočasně nedostupný; pokud analýza selže, zkuste to znovu za chvíli, nebo zadejte výšku a horizont ručně. Typ podloží se z mapy nedetekuje automaticky. Sluneční geometrie je počítána přesnou astronomickou formulí. Model neuvažuje dlouhovlnné záření, vypařování ani oblačnost.
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const rho=900, Lf=334000, albedoDry=0.6, albedoWet=0.25, kBonus=0.35;
+const days=180;
+const DIRECTIONS=12;
+const RING_DISTS=[500,1000,2000,4000,8000];
+
+let map, marker;
+let horizonProfile = null;
+
+if (typeof L === 'undefined'){
+  document.getElementById('libError').classList.add('show');
+} else {
+  map = L.map('map').setView([46.02, 7.75], 9);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19, subdomains: 'abcd',
+    attribution: 'Map data (c) OpenStreetMap contributors, (c) CARTO'
+  }).addTo(map);
+  marker = L.marker([46.02, 7.75]).addTo(map);
+  map.on('click', (e)=> setPoint(e.latlng.lat, e.latlng.lng));
+}
+
+function setPoint(lat, lon){
+  marker.setLatLng([lat, lon]);
+  document.getElementById('lat').value = lat.toFixed(4);
+  document.getElementById('coordInfo').textContent = 'Vybraný bod: ' + lat.toFixed(4) + ', ' + lon.toFixed(4);
+}
+
+document.getElementById('searchBtn').addEventListener('click', async ()=>{
+  const q = document.getElementById('search').value.trim();
+  if (!q) return;
+  if (!map || !marker){ document.getElementById('libError').classList.add('show'); return; }
+  const statusEl = document.getElementById('status');
+  statusEl.className = 'status show loading';
+  statusEl.textContent = 'Hledám místo...';
+  try {
+    const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+    const data = await res.json();
+    if (data && data.length > 0){
+      const lat = +data[0].lat, lon = +data[0].lon;
+      map.setView([lat, lon], 12);
+      setPoint(lat, lon);
+      statusEl.className = 'status show ok';
+      statusEl.textContent = 'Nalezeno: ' + data[0].display_name;
+    } else {
+      statusEl.className = 'status show error';
+      statusEl.textContent = 'Místo nenalezeno, zkuste jiný název nebo klikněte přímo na mapu.';
+    }
+  } catch(err){
+    statusEl.className = 'status show error';
+    statusEl.textContent = 'Vyhledávání selhalo. Klikněte přímo na mapu.';
+  }
+});
+
+function destPoint(lat, lon, bearingDeg, distM){
+  const R=6371000;
+  const phi1=lat*Math.PI/180, lam1=lon*Math.PI/180, theta=bearingDeg*Math.PI/180;
+  const phi2=Math.asin(Math.sin(phi1)*Math.cos(distM/R)+Math.cos(phi1)*Math.sin(distM/R)*Math.cos(theta));
+  const lam2=lam1+Math.atan2(Math.sin(theta)*Math.sin(distM/R)*Math.cos(phi1), Math.cos(distM/R)-Math.sin(phi1)*Math.sin(phi2));
+  return { lat: phi2*180/Math.PI, lon: lam2*180/Math.PI };
+}
+
+let horizonChartInstance;
+function drawHorizonChart(profile){
+  const ctx = document.getElementById('horizonChart');
+  const labels = profile.map((_,i)=> (i*360/DIRECTIONS)+'°');
+  if (horizonChartInstance) horizonChartInstance.destroy();
+  horizonChartInstance = new Chart(ctx, {
+    type: 'radar',
+    data: { labels, datasets: [{ label:'Úhel horizontu', data: profile, borderColor:'#eb6834', backgroundColor:'rgba(235,104,52,0.15)', borderWidth:2, pointRadius:2 }] },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{ r:{ min:0, max:60, ticks:{ stepSize:20, color:'#898781', backdropColor:'transparent' }, grid:{color:'#e1e0d9'}, angleLines:{color:'#e1e0d9'}, pointLabels:{color:'#898781', font:{size:10}} } }
+    }
+  });
+}
+
+document.getElementById('analyzeBtn').addEventListener('click', async ()=>{
+  if (!map || !marker){ document.getElementById('libError').classList.add('show'); return; }
+  const latlng = marker.getLatLng();
+  const lat = latlng.lat, lon = latlng.lng;
+  const statusEl = document.getElementById('status');
+  statusEl.className = 'status show loading';
+  statusEl.textContent = 'Načítám nadmořskou výšku a terén (13 bodů x 5 vzdáleností)...';
+
+  const points = [{latitude:lat, longitude:lon}];
+  const rays = [];
+  for (let i=0;i<DIRECTIONS;i++){
+    const bearing = i*360/DIRECTIONS;
+    for (const d of RING_DISTS){
+      const p = destPoint(lat, lon, bearing, d);
+      points.push({latitude:p.lat, longitude:p.lon});
+      rays.push({bearing, dist:d});
+    }
+  }
+
+  try {
+    const res = await fetch('https://api.open-elevation.com/api/v1/lookup', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({locations: points})
+    });
+    if (!res.ok) throw new Error('API status ' + res.status);
+    const data = await res.json();
+    const results = data.results;
+    const originElev = results[0].elevation;
+    document.getElementById('elev').value = Math.round(originElev);
+
+    const profile = new Array(DIRECTIONS).fill(0);
+    for (let i=0;i<rays.length;i++){
+      const r = results[i+1];
+      const dirIdx = Math.round(rays[i].bearing/(360/DIRECTIONS)) % DIRECTIONS;
+      const angleDeg = Math.atan2(r.elevation - originElev, rays[i].dist) * 180/Math.PI;
+      if (angleDeg > profile[dirIdx]) profile[dirIdx] = angleDeg;
+    }
+    horizonProfile = profile.map(a => Math.max(0, a));
+    drawHorizonChart(horizonProfile);
+
+    const openCount = horizonProfile.filter(a => a < 15).length;
+    const openPct = Math.round(openCount/DIRECTIONS*100);
+    document.getElementById('exposed').value = Math.max(10, openPct);
+    document.getElementById('exposedOut').textContent = Math.max(10, openPct)+'%';
+    document.getElementById('exposedInfo').textContent = 'Automaticky odhadnuto: ' + openPct + '% obzoru je otevřených (úhel horizontu pod 15°).';
+
+    statusEl.className = 'status show ok';
+    statusEl.textContent = 'Hotovo. Nadmořská výška: ' + Math.round(originElev) + ' m. Zastínění spočítáno z 60 okolních bodů terénu.';
+    update();
+  } catch(err){
+    statusEl.className = 'status show error';
+    statusEl.textContent = 'Načtení terénních dat selhalo (veřejné API může být přetížené). Zkuste to znovu za chvíli, nebo zadejte výšku a horizont ručně níže.';
+  }
+});
+
+function declination(N){ return 23.45*Math.sin(2*Math.PI/365*(284+N)); }
+
+function sunAt(lat, N, hour){
+  const decl = declination(N)*Math.PI/180;
+  const latR = lat*Math.PI/180;
+  const H = ((hour-12)*15)*Math.PI/180;
+  const sinAlt = Math.sin(latR)*Math.sin(decl)+Math.cos(latR)*Math.cos(decl)*Math.cos(H);
+  const alt = Math.asin(Math.max(-1,Math.min(1,sinAlt)));
+  let cosAz = (Math.sin(decl)-Math.sin(alt)*Math.sin(latR))/(Math.cos(alt)*Math.cos(latR)+1e-9);
+  cosAz = Math.max(-1,Math.min(1,cosAz));
+  let az = Math.acos(cosAz)*180/Math.PI;
+  if (H>0) az = 360-az;
+  return { alt: alt*180/Math.PI, az };
+}
+
+function horizonAt(profile, azDeg){
+  if (!profile) return 0;
+  const step = 360/DIRECTIONS;
+  const idx = azDeg/step;
+  const i0 = Math.floor(idx)%DIRECTIONS, i1=(i0+1)%DIRECTIONS;
+  const frac = idx-Math.floor(idx);
+  return profile[i0]*(1-frac)+profile[i1]*frac;
+}
+
+function dayProfile(lat, N, profile, stepsPerDay=96){
+  let visibleSteps=0, sinSum=0;
+  for (let i=0;i<stepsPerDay;i++){
+    const hour = i/stepsPerDay*24;
+    const {alt, az} = sunAt(lat, N, hour);
+    const blockAngle = profile ? horizonAt(profile, az) : 0;
+    if (alt > blockAngle){
+      visibleSteps++;
+      sinSum += Math.max(0, Math.sin(alt*Math.PI/180));
+    }
+  }
+  const dt=24/stepsPerDay;
+  return { sunHours: visibleSteps*dt, avgSinAlt: visibleSteps>0?sinSum/visibleSteps:0 };
+}
+
+function hc(level){ return {low:8, med:18, high:32}[level]; }
+
+function simulate(shape, f, p){
+  const h_c = hc(p.wind);
+  const elevKm = p.elevM/1000;
+  const S = p.solar*(1+0.05*elevKm);
+  let V=p.V0;
+  const c = shape==='cone' ? (3*p.V0/(Math.PI*p.R0*p.R0))/p.R0 : null;
+  const series=[V]; let meltDay=null;
+  for (let d=1; d<=days; d++){
+    if (V<=0){ series.push(0); if(meltDay===null) meltDay=d-1; continue; }
+    const N = ((p.startDay-1+d) % 365)+1;
+    const {sunHours, avgSinAlt} = dayProfile(p.lat, N, p.horizonProfile);
+    let Aproj, Aact;
+    if (shape==='flat'){ Aproj=Aact=Math.PI*p.R0*p.R0; }
+    else {
+      const R=Math.cbrt(3*V/(Math.PI*c)); const H=c*R; const L=Math.sqrt(R*R+H*H);
+      Aproj = Math.PI*R*R*p.exposedFrac; Aact = Math.PI*R*L;
+    }
+    const albedoEff = albedoDry - f*(albedoDry-albedoWet);
+    const Esolar = S*avgSinAlt*(1-albedoEff)*Aproj*sunHours*3600;
+    const substrateBonus = p.substrate==='rock' ? 3*avgSinAlt*(sunHours>0?1:0) : 0.5*avgSinAlt*(sunHours>0?1:0);
+    const Teff = p.temp + substrateBonus;
+    const Econv = h_c*Math.max(Teff,0)*Aact*86400;
+    const Ebase = Esolar+Econv;
+    const Enet = Ebase + f*kBonus*Ebase;
+    const dV = Enet/(rho*Lf);
+    V = Math.max(0, V-dV);
+    series.push(V);
+    if (V<=0 && meltDay===null) meltDay=d;
+  }
+  if (meltDay===null) meltDay=days;
+  return {series, meltDay};
+}
+
+let chart;
+function update(){
+  const lat = +document.getElementById('lat').value;
+  const elevM = +document.getElementById('elev').value;
+  const exposedFrac = +document.getElementById('exposed').value/100;
+  const substrate = document.getElementById('substrate').value;
+  const temp = +document.getElementById('temp').value;
+  const solar = +document.getElementById('solar').value;
+  const wind = document.getElementById('wind').value;
+  const f = +document.getElementById('infil').value/100;
+  const V0 = +document.getElementById('volume').value;
+  const R0 = +document.getElementById('radius').value;
+  const startDay = +document.getElementById('startDay').value;
+
+  document.getElementById('exposedOut').textContent = Math.round(exposedFrac*100)+'%';
+  document.getElementById('tempOut').textContent = temp+'°C';
+  document.getElementById('solarOut').textContent = solar;
+  document.getElementById('infilOut').textContent = Math.round(f*100)+'%';
+  document.getElementById('volumeOut').textContent = V0;
+  document.getElementById('radiusOut').textContent = R0;
+
+  const base = {lat, elevM, exposedFrac, substrate, temp, solar, wind, V0, R0, startDay, horizonProfile};
+  const flatRun = simulate('flat', 0, base);
+  const flatInf = simulate('flat', f, base);
+  const coneRun = simulate('cone', 0, base);
+  const coneInf = simulate('cone', f, base);
+
+  document.getElementById('dFlatRun').textContent = flatRun.meltDay+' dní';
+  document.getElementById('dFlatInf').textContent = flatInf.meltDay+' dní';
+  document.getElementById('dConeRun').textContent = coneRun.meltDay+' dní';
+  document.getElementById('dConeInf').textContent = coneInf.meltDay+' dní';
+
+  const labels = Array.from({length: days+1}, (_,i)=>i);
+  const pct = (arr)=>arr.map(v=>Math.round(v/V0*1000)/10);
+
+  if (!chart){
+    const ctx = document.getElementById('chart');
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: [
+        { label:'Plocha, odtok', data: pct(flatRun.series), borderColor:'#2a78d6', borderWidth:2, pointRadius:0, borderDash:[] },
+        { label:'Plocha, vsak', data: pct(flatInf.series), borderColor:'#2a78d6', borderWidth:2, pointRadius:0, borderDash:[6,4] },
+        { label:'Kužel, odtok', data: pct(coneRun.series), borderColor:'#eb6834', borderWidth:2, pointRadius:0, borderDash:[] },
+        { label:'Kužel, vsak', data: pct(coneInf.series), borderColor:'#eb6834', borderWidth:2, pointRadius:0, borderDash:[6,4] }
+      ]},
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false} },
+        scales:{
+          x:{ title:{display:true, text:'Den od zahájení stavby', color:'#898781'}, ticks:{color:'#898781', maxTicksLimit:8}, grid:{display:false} },
+          y:{ title:{display:true, text:'Zbývající objem ledu (%)', color:'#898781'}, min:0, max:100, ticks:{color:'#898781'}, grid:{color:'#e1e0d9'} }
+        }
+      }
+    });
+  } else {
+    chart.data.datasets[0].data = pct(flatRun.series);
+    chart.data.datasets[1].data = pct(flatInf.series);
+    chart.data.datasets[2].data = pct(coneRun.series);
+    chart.data.datasets[3].data = pct(coneInf.series);
+    chart.update();
+  }
+}
+
+['lat','elev','exposed','substrate','temp','solar','wind','infil','volume','radius','startDay'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', update);
+  document.getElementById(id).addEventListener('change', update);
+});
+
+drawHorizonChart(new Array(DIRECTIONS).fill(0));
+update();
+</script>
+</body>
+</html>
