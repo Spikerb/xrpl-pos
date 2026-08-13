@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulace tání ledu - plochý tvar vs ledová stúpa (kužel)</title>
+<style>
+  :root {
+    --bg: #f7f6f2;
+    --card: #ffffff;
+    --border: #e1e0d9;
+    --text: #1a1a19;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --accent-blue: #2a78d6;
+    --accent-orange: #eb6834;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 2rem 1rem;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+  .subtitle { color: var(--text-secondary); font-size: 14px; margin: 0 0 1.5rem; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  label { font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
+  select, input[type=range] { width: 100%; }
+  select {
+    height: 36px; border-radius: 8px; border: 1px solid var(--border);
+    padding: 0 10px; background: #fff; font-size: 14px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 16px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row span.out { font-size: 14px; font-weight: 600; min-width: 44px; text-align: right; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--text-secondary); margin: 0 0 8px; }
+  .legend span.swatch { display: inline-block; width: 16px; height: 2px; margin-right: 4px; vertical-align: middle; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 12px; }
+  .metric { background: #f1efe8; border-radius: 8px; padding: 1rem; }
+  .metric p.label { font-size: 13px; color: var(--text-secondary); margin: 0 0 4px; }
+  .metric p.value { font-size: 22px; font-weight: 600; margin: 0; }
+  .chart-box { position: relative; width: 100%; height: 320px; }
+  footer { font-size: 12px; color: var(--text-muted); margin-top: 1.5rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Simulace tání ledu: plochý tvar vs kužel (ledová stúpa)</h1>
+  <p class="subtitle">Vliv geometrie, doby oslunění podle polohy a vsakování vs. odtékání tající vody</p>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label for="location">Poloha</label>
+        <select id="location">
+          <option value="peak">Horský vrchol - plné oslunění</option>
+          <option value="valley" selected>Hluboké údolí, severní polokoule - jen jih</option>
+        </select>
+      </div>
+      <div>
+        <label for="sunHours">Doba přímého osvitu (h/den)</label>
+        <div class="row"><input type="range" min="0" max="12" step="0.5" value="3" id="sunHours"><span class="out" id="sunHoursOut">3 h</span></div>
+      </div>
+      <div>
+        <label for="exposed">Osvětlený obvod kužele (%)</label>
+        <div class="row"><input type="range" min="10" max="100" step="5" value="30" id="exposed"><span class="out" id="exposedOut">30%</span></div>
+      </div>
+      <div>
+        <label for="temp">Teplota vzduchu (°C)</label>
+        <div class="row"><input type="range" min="-5" max="20" step="1" value="5" id="temp"><span class="out" id="tempOut">5°C</span></div>
+      </div>
+      <div>
+        <label for="solar">Sluneční záření (W/m²)</label>
+        <div class="row"><input type="range" min="100" max="900" step="10" value="450" id="solar"><span class="out" id="solarOut">450</span></div>
+      </div>
+      <div>
+        <label for="wind">Vítr / konvekce</label>
+        <select id="wind">
+          <option value="low">Slabý</option>
+          <option value="med" selected>Střední</option>
+          <option value="high">Silný</option>
+        </select>
+      </div>
+      <div>
+        <label for="infil">Vsakování tající vody (%)</label>
+        <div class="row"><input type="range" min="0" max="100" step="5" value="60" id="infil"><span class="out" id="infilOut">60%</span></div>
+      </div>
+      <div>
+        <label for="volume">Počáteční objem ledu (m³)</label>
+        <div class="row"><input type="range" min="10" max="200" step="5" value="60" id="volume"><span class="out" id="volumeOut">60</span></div>
+      </div>
+      <div>
+        <label for="radius">Poloměr základny (m)</label>
+        <div class="row"><input type="range" min="1" max="6" step="0.5" value="3" id="radius"><span class="out" id="radiusOut">3</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="legend">
+      <span><span class="swatch" style="background:#2a78d6;"></span>Plochý tvar - odtok</span>
+      <span><span class="swatch" style="border-top:2px dashed #2a78d6; background:none;"></span>Plochý tvar - vsak</span>
+      <span><span class="swatch" style="background:#eb6834;"></span>Kužel - odtok</span>
+      <span><span class="swatch" style="border-top:2px dashed #eb6834; background:none;"></span>Kužel - vsak</span>
+    </div>
+    <div class="chart-box">
+      <canvas id="chart" role="img" aria-label="Graf úbytku objemu ledu v čase"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="metrics">
+      <div class="metric"><p class="label">Plocha, odtok</p><p class="value" id="dFlatRun">-</p></div>
+      <div class="metric"><p class="label">Plocha, vsak</p><p class="value" id="dFlatInf">-</p></div>
+      <div class="metric"><p class="label">Kužel, odtok</p><p class="value" id="dConeRun">-</p></div>
+      <div class="metric"><p class="label">Kužel, vsak</p><p class="value" id="dConeInf">-</p></div>
+    </div>
+  </div>
+
+  <footer>
+    Zjednodušený energeticko-bilanční model (sluneční záření + konvekce), pro ilustraci principu ledových stúp. Neuvažuje dlouhovlnné záření, výpar, ani proměnlivý úhel slunce během dne.
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const rho=900, Lf=334000, albedoDry=0.6, albedoWet=0.25, kBonus=0.35;
+const days=150;
+function hc(level){ return {low:8, med:18, high:32}[level]; }
+
+function simulate(shape, f, T, S, wind, sunHours, exposedFrac, V0, R0){
+  const h_c = hc(wind);
+  let V = V0;
+  const c = shape==='cone' ? (3*V0/(Math.PI*R0*R0))/R0 : null;
+  const out = [V];
+  let meltDay = null;
+  for (let d=1; d<=days; d++){
+    if (V<=0){ out.push(0); if(meltDay===null) meltDay=d-1; continue; }
+    let Aproj, Aact;
+    if (shape==='flat'){
+      Aproj = Aact = Math.PI*R0*R0;
+    } else {
+      const R = Math.cbrt(3*V/(Math.PI*c));
+      const H = c*R;
+      const L = Math.sqrt(R*R+H*H);
+      Aproj = Math.PI*R*R * exposedFrac;
+      Aact = Math.PI*R*L;
+    }
+    const albedoEff = albedoDry - f*(albedoDry-albedoWet);
+    const QsolarFlux = S*(1-albedoEff)*Aproj;
+    const Esolar = QsolarFlux*sunHours*3600;
+    const Qconv = h_c*Math.max(T,0)*Aact;
+    const Econv = Qconv*86400;
+    const Ebase = Esolar+Econv;
+    const Enet = Ebase + f*kBonus*Ebase;
+    const dV = Enet/(rho*Lf);
+    V = Math.max(0, V-dV);
+    out.push(V);
+    if (V<=0 && meltDay===null) meltDay = d;
+  }
+  if (meltDay===null) meltDay = days;
+  return {series: out, meltDay};
+}
+
+let chart;
+function update(){
+  const T = +document.getElementById('temp').value;
+  const S = +document.getElementById('solar').value;
+  const wind = document.getElementById('wind').value;
+  const f = +document.getElementById('infil').value/100;
+  const sunHours = +document.getElementById('sunHours').value;
+  const exposedFrac = +document.getElementById('exposed').value/100;
+  const V0 = +document.getElementById('volume').value;
+  const R0 = +document.getElementById('radius').value;
+
+  document.getElementById('tempOut').textContent = T+'°C';
+  document.getElementById('solarOut').textContent = S;
+  document.getElementById('infilOut').textContent = Math.round(f*100)+'%';
+  document.getElementById('sunHoursOut').textContent = sunHours+' h';
+  document.getElementById('exposedOut').textContent = Math.round(exposedFrac*100)+'%';
+  document.getElementById('volumeOut').textContent = V0;
+  document.getElementById('radiusOut').textContent = R0;
+
+  const flatRun = simulate('flat', 0, T, S, wind, sunHours, 1, V0, R0);
+  const flatInf = simulate('flat', f, T, S, wind, sunHours, 1, V0, R0);
+  const coneRun = simulate('cone', 0, T, S, wind, sunHours, exposedFrac, V0, R0);
+  const coneInf = simulate('cone', f, T, S, wind, sunHours, exposedFrac, V0, R0);
+
+  document.getElementById('dFlatRun').textContent = flatRun.meltDay+' dní';
+  document.getElementById('dFlatInf').textContent = flatInf.meltDay+' dní';
+  document.getElementById('dConeRun').textContent = coneRun.meltDay+' dní';
+  document.getElementById('dConeInf').textContent = coneInf.meltDay+' dní';
+
+  const labels = Array.from({length: days+1}, (_,i)=>i);
+  const pct = (arr)=>arr.map(v=>Math.round(v/V0*1000)/10);
+
+  if (!chart){
+    const ctx = document.getElementById('chart');
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: [
+        { label:'Plocha, odtok', data: pct(flatRun.series), borderColor:'#2a78d6', borderWidth:2, pointRadius:0, borderDash:[] },
+        { label:'Plocha, vsak', data: pct(flatInf.series), borderColor:'#2a78d6', borderWidth:2, pointRadius:0, borderDash:[6,4] },
+        { label:'Kužel, odtok', data: pct(coneRun.series), borderColor:'#eb6834', borderWidth:2, pointRadius:0, borderDash:[] },
+        { label:'Kužel, vsak', data: pct(coneInf.series), borderColor:'#eb6834', borderWidth:2, pointRadius:0, borderDash:[6,4] }
+      ]},
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false} },
+        scales:{
+          x:{ title:{display:true, text:'Den', color:'#898781'}, ticks:{color:'#898781', maxTicksLimit:8}, grid:{display:false} },
+          y:{ title:{display:true, text:'Zbývající objem ledu (%)', color:'#898781'}, min:0, max:100, ticks:{color:'#898781'}, grid:{color:'#e1e0d9'} }
+        }
+      }
+    });
+  } else {
+    chart.data.datasets[0].data = pct(flatRun.series);
+    chart.data.datasets[1].data = pct(flatInf.series);
+    chart.data.datasets[2].data = pct(coneRun.series);
+    chart.data.datasets[3].data = pct(coneInf.series);
+    chart.update();
+  }
+}
+
+document.getElementById('location').addEventListener('change', function(){
+  if (this.value === 'peak'){
+    document.getElementById('sunHours').value = 9;
+    document.getElementById('exposed').value = 90;
+  } else {
+    document.getElementById('sunHours').value = 3;
+    document.getElementById('exposed').value = 30;
+  }
+  update();
+});
+document.getElementById('temp').addEventListener('input', update);
+document.getElementById('solar').addEventListener('input', update);
+document.getElementById('wind').addEventListener('change', update);
+document.getElementById('infil').addEventListener('input', update);
+document.getElementById('sunHours').addEventListener('input', update);
+document.getElementById('exposed').addEventListener('input', update);
+document.getElementById('volume').addEventListener('input', update);
+document.getElementById('radius').addEventListener('input', update);
+update();
+</script>
+</body>
+</html>
